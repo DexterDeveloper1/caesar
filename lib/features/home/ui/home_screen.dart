@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:caesar/app/router.dart';
-import 'package:caesar/features/game/ui/game_screen.dart';
+import 'package:caesar/core/constants.dart';
+import 'package:caesar/features/game/logic/game_type.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -92,13 +93,7 @@ class _HomeScreenState extends State<HomeScreen>
           ],
         ),
         body: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF2B5876), Color(0xFF4E4376)],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
+          decoration: const BoxDecoration(gradient: AppGradients.background),
           child: SafeArea(
             child: FadeTransition(
               opacity: _fadeAnimation,
@@ -185,7 +180,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 ),
                               ),
                               Text(
-                                'v${_appVersion()}',
+                                'v${AppInfo.version}',
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: Colors.white54,
                                 ),
@@ -205,6 +200,4 @@ class _HomeScreenState extends State<HomeScreen>
       ),
     );
   }
-
-  String _appVersion() => '1.0.0';
 }
