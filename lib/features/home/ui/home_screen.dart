@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:caesar/app/router.dart';
+import 'package:caesar/features/game/ui/game_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -39,11 +41,9 @@ class _HomeScreenState extends State<HomeScreen>
     super.dispose();
   }
 
-  void _goToMode(BuildContext context, String mode) {
-    context.go('/game/$mode');
-  }
+  void _play(GameType mode) => context.go(Routes.game(mode.name));
 
-  Future<bool> _confirmExit(BuildContext context) async {
+  Future<bool> _confirmExit() async {
     final shouldExit = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -71,11 +71,11 @@ class _HomeScreenState extends State<HomeScreen>
 
     return PopScope(
       canPop: false,
-      onPopInvoked: (didPop) async {
-        if (!didPop) {
-          final shouldExit = await _confirmExit(context);
-          if (shouldExit) Navigator.of(context).pop();
-        }
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final shouldExit = await _confirmExit();
+        if (!shouldExit || !context.mounted) return;
+        Navigator.of(context).pop();
       },
       child: Scaffold(
         extendBodyBehindAppBar: true,
@@ -87,7 +87,7 @@ class _HomeScreenState extends State<HomeScreen>
             IconButton(
               tooltip: 'Settings',
               icon: const Icon(Icons.settings),
-              onPressed: () => context.go('/settings'),
+              onPressed: () => context.push(Routes.settings),
             ),
           ],
         ),
@@ -126,7 +126,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 'assets/images/header.png',
                                 fit: BoxFit.cover,
                                 width: size.width * 0.7,
-                                errorBuilder: (_, __, ___) => Icon(
+                                errorBuilder: (_, _, _) => Icon(
                                   Icons.bolt,
                                   size: 80,
                                   color: theme.colorScheme.onPrimary,
@@ -153,37 +153,31 @@ class _HomeScreenState extends State<HomeScreen>
                           ),
                           const SizedBox(height: 32),
 
-                          // 🎮 Mode Buttons
+                          // Mode buttons
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               FilledButton.icon(
                                 icon: const Icon(Icons.spellcheck),
                                 label: const Text('Spelling Mode'),
-                                onPressed: () => _goToMode(context, 'spelling'),
+                                onPressed: () => _play(GameType.spelling),
                               ),
                               const SizedBox(height: 12),
                               FilledButton.icon(
                                 icon: const Icon(Icons.calculate),
                                 label: const Text('Math Mode'),
-                                onPressed: () => _goToMode(context, 'math'),
-                              ),
-                              const SizedBox(height: 12),
-                              FilledButton.icon(
-                                icon: const Icon(Icons.flash_on),
-                                label: const Text('Expert Mode'),
-                                onPressed: () => _goToMode(context, 'expert'),
+                                onPressed: () => _play(GameType.math),
                               ),
                             ],
                           ),
                           const Spacer(),
 
-                          // 📊 Footer
+                          // Footer
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               TextButton.icon(
-                                onPressed: () => context.go('/highscores'),
+                                onPressed: () => context.push(Routes.highscores),
                                 icon: const Icon(Icons.leaderboard),
                                 label: const Text('Highscores'),
                                 style: TextButton.styleFrom(
