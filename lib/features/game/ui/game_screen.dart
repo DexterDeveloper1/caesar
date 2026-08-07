@@ -1,11 +1,11 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-
 import 'package:caesar/app/router.dart';
 import 'package:caesar/core/constants.dart';
 import 'package:caesar/features/game/logic/game_controller.dart';
 import 'package:caesar/features/game/logic/game_type.dart';
+import 'package:caesar/services/audio_service.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class GameScreen extends ConsumerStatefulWidget {
   final GameType mode;
@@ -26,7 +26,9 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   }
 
   void _submit() {
-    ref.read(gameControllerProvider(widget.mode).notifier).submit(_controller.text);
+    ref
+        .read(gameControllerProvider(widget.mode).notifier)
+        .submit(_controller.text);
     _controller.clear();
   }
 
@@ -37,6 +39,20 @@ class _GameScreenState extends ConsumerState<GameScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Play feedback based on how the state changed, keeping the controller
+    // free of UI/platform side effects.
+    ref.listen(gameControllerProvider(widget.mode), (previous, next) {
+      if (previous == null) return;
+      final audio = ref.read(audioServiceProvider);
+      if (next.isGameOver && !previous.isGameOver) {
+        audio.gameOver();
+      } else if (next.score > previous.score) {
+        audio.correct();
+      } else if (next.strikes > previous.strikes) {
+        audio.wrong();
+      }
+    });
+
     final state = ref.watch(gameControllerProvider(widget.mode));
 
     if (state.isGameOver) {
@@ -54,13 +70,20 @@ class _GameScreenState extends ConsumerState<GameScreen> {
               children: [
                 Text('Score: ${state.score}'),
                 Text('Strikes: ${state.strikes}/${GameConfig.maxStrikes}'),
-                Text('Time: ${state.timeLeft}'),
+                Semantics(
+                  liveRegion: true,
+                  label: '${state.timeLeft} seconds left',
+                  child: Text('Time: ${state.timeLeft}'),
+                ),
               ],
             ),
             const SizedBox(height: 40),
-            Text(
-              state.prompt,
-              style: Theme.of(context).textTheme.headlineMedium,
+            Semantics(
+              label: 'Question',
+              child: Text(
+                state.prompt,
+                style: Theme.of(context).textTheme.headlineMedium,
+              ),
             ),
             const SizedBox(height: 20),
             TextField(
@@ -98,7 +121,10 @@ class _GameOverView extends StatelessWidget {
           children: [
             const Icon(Icons.close, color: Colors.red, size: 80),
             const SizedBox(height: 16),
-            Text('Game Over', style: Theme.of(context).textTheme.headlineMedium),
+            Text(
+              'Game Over',
+              style: Theme.of(context).textTheme.headlineMedium,
+            ),
             Text('Score: $score'),
             const SizedBox(height: 20),
             ElevatedButton(onPressed: onRestart, child: const Text('Restart')),

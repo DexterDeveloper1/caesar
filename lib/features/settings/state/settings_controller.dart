@@ -1,8 +1,7 @@
+import 'package:caesar/services/storage_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'package:caesar/services/storage_service.dart';
 
 /// User-configurable app settings, persisted via [StorageService].
 @immutable
@@ -37,7 +36,8 @@ class SettingsController extends Notifier<Settings> {
   @override
   Settings build() => _storage.readSettings();
 
-  void setSoundEnabled(bool value) => _update(state.copyWith(soundEnabled: value));
+  void setSoundEnabled(bool value) =>
+      _update(state.copyWith(soundEnabled: value));
 
   void setThemeMode(ThemeMode mode) => _update(state.copyWith(themeMode: mode));
 

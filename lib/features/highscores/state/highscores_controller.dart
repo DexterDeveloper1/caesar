@@ -1,7 +1,6 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:caesar/features/game/logic/game_type.dart';
 import 'package:caesar/services/storage_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Best score per [GameType], loaded from storage and updated when a run beats
 /// the existing record.

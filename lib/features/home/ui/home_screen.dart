@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:caesar/app/router.dart';
 import 'package:caesar/core/constants.dart';
 import 'package:caesar/features/game/logic/game_type.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -172,7 +172,8 @@ class _HomeScreenState extends State<HomeScreen>
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               TextButton.icon(
-                                onPressed: () => context.push(Routes.highscores),
+                                onPressed: () =>
+                                    context.push(Routes.highscores),
                                 icon: const Icon(Icons.leaderboard),
                                 label: const Text('Highscores'),
                                 style: TextButton.styleFrom(

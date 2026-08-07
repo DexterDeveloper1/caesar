@@ -53,9 +53,10 @@ The app is being revived in phases:
 
 - **Phase 0 — Stability** (done): fixed broken routing, the double-speed timer,
   and incorrect math generation; removed dead code; real tests.
-- **Phase 1 — Architecture**: Riverpod state management, local persistence for
-  highscores and settings, functional settings screen, difficulty selection.
-- **Phase 2 — Polish**: sound effects, accessibility, stricter lints, CI, wider
-  test coverage.
-- **Phase 3 — Online (optional)**: a NestJS backend for global leaderboards and
+- **Phase 1 — Architecture** (done): Riverpod state management, local
+  persistence for highscores and settings, functional settings screen,
+  difficulty selection.
+- **Phase 2 — Polish** (done): sound/haptic feedback, accessibility semantics,
+  stricter lints, CI (`.github/workflows/ci.yml`), wider test coverage.
+- **Phase 3 — Online (planned)**: a NestJS backend for global leaderboards and
   accounts.

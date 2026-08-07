@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:caesar/core/constants.dart';
 import 'package:caesar/features/highscores/state/highscores_controller.dart';
 import 'package:caesar/features/settings/state/settings_controller.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'game_state.dart';
 import 'game_type.dart';
 import 'question_generator.dart';
@@ -26,8 +26,14 @@ class GameController extends Notifier<GameState> {
   @override
   GameState build() {
     ref.onDispose(() => _timer?.cancel());
-    final startDifficulty = ref.read(settingsControllerProvider).startDifficulty;
-    final initial = _nextRound(score: 0, strikes: 0, difficulty: startDifficulty);
+    final startDifficulty = ref
+        .read(settingsControllerProvider)
+        .startDifficulty;
+    final initial = _nextRound(
+      score: 0,
+      strikes: 0,
+      difficulty: startDifficulty,
+    );
     _startTimer();
     return initial;
   }
@@ -82,7 +88,9 @@ class GameController extends Notifier<GameState> {
     if (strikes >= GameConfig.maxStrikes) {
       _timer?.cancel();
       state = state.copyWith(strikes: strikes, status: GameStatus.gameOver);
-      ref.read(highscoresControllerProvider.notifier).submit(_mode, state.score);
+      ref
+          .read(highscoresControllerProvider.notifier)
+          .submit(_mode, state.score);
     } else {
       state = _nextRound(
         score: state.score,
@@ -93,13 +101,13 @@ class GameController extends Notifier<GameState> {
   }
 
   void restart() {
-    final startDifficulty = ref.read(settingsControllerProvider).startDifficulty;
+    final startDifficulty = ref
+        .read(settingsControllerProvider)
+        .startDifficulty;
     state = _nextRound(score: 0, strikes: 0, difficulty: startDifficulty);
     _startTimer();
   }
 }
 
-final gameControllerProvider =
-    NotifierProvider.autoDispose.family<GameController, GameState, GameType>(
-      GameController.new,
-    );
+final gameControllerProvider = NotifierProvider.autoDispose
+    .family<GameController, GameState, GameType>(GameController.new);

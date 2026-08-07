@@ -1,8 +1,7 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:caesar/features/game/logic/game_type.dart';
 import 'package:caesar/features/highscores/state/highscores_controller.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Shows the best score per mode, backed by persisted storage.
 class HighscoresScreen extends ConsumerWidget {
