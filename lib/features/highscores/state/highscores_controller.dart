@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:caesar/core/training_mode.dart';
+import 'package:caesar/features/leaderboard/state/leaderboard_controller.dart';
 import 'package:caesar/services/storage_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -17,6 +20,9 @@ class HighscoresController extends Notifier<Map<TrainingMode, int>> {
     if (score <= best) return false;
     state = {...state, mode: score};
     _storage.writeHighscore(mode, score);
+    // Mirror new records to the global leaderboard when the app is built with
+    // a server; a no-op (and never a failure) otherwise.
+    unawaited(ref.read(submitScoreProvider)(mode, score));
     return true;
   }
 }

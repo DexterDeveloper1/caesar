@@ -34,12 +34,15 @@ lib/
     game/         Spelling & Math gameplay (generation, scoring, timer)
     simon/        Simon memory-sequence game
     nback/        Dual N-Back working-memory task (TTS audio)
-    highscores/   Highscores board
+    highscores/   Personal bests + global board
+    leaderboard/  API client and state for online scores
+    stats/        Streaks and lifetime session counts
     settings/     App settings
-  core/           Shared enums (TrainingMode), constants, design tokens
+  core/           TrainingMode, constants, design tokens, shared widgets
   services/       Storage (shared_preferences), audio/haptics
 assets/
   audio/          Music loop + sound effects (WAV)
+server/           Optional NestJS leaderboard API (see server/README.md)
 ```
 
 ## Audio
@@ -84,5 +87,25 @@ The app is being revived in phases:
   difficulty selection.
 - **Phase 2 — Polish** (done): sound/haptic feedback, accessibility semantics,
   stricter lints, CI (`.github/workflows/ci.yml`), wider test coverage.
-- **Phase 3 — Online (planned)**: a NestJS backend for global leaderboards and
-  accounts.
+- **Phase 3 — Online** (done): a NestJS backend for global leaderboards, plus
+  an opt-in client in the app. See [server/README.md](server/README.md).
+
+## Global leaderboards (optional)
+
+The app is offline-first and fully playable with no server. Building with an
+API URL additionally syncs new records and shows a global board:
+
+```bash
+flutter run --dart-define=CAESAR_API_URL=http://10.0.2.2:3000
+```
+
+(`10.0.2.2` is how the Android emulator reaches your machine's `localhost`.)
+Without that define the app makes no network calls at all and the leaderboard
+UI stays hidden. Players are identified by an anonymous, generated device id —
+there are no accounts or passwords.
+
+Run the API from [`server/`](server):
+
+```bash
+cd server && npm install && npm run start:dev
+```

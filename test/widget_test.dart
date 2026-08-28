@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:caesar/app/app.dart';
 import 'package:caesar/core/training_mode.dart';
 import 'package:caesar/features/game/logic/game_controller.dart';
@@ -6,6 +8,7 @@ import 'package:caesar/features/game/logic/game_type.dart';
 import 'package:caesar/features/game/logic/question_generator.dart';
 import 'package:caesar/features/game/ui/game_screen.dart';
 import 'package:caesar/features/highscores/state/highscores_controller.dart';
+import 'package:caesar/features/leaderboard/data/leaderboard_api.dart';
 import 'package:caesar/features/nback/logic/nback_audio.dart';
 import 'package:caesar/features/nback/logic/nback_controller.dart';
 import 'package:caesar/features/nback/logic/nback_logic.dart';
@@ -14,11 +17,14 @@ import 'package:caesar/features/nback/ui/nback_screen.dart';
 import 'package:caesar/features/settings/state/settings_controller.dart';
 import 'package:caesar/features/simon/logic/simon_controller.dart';
 import 'package:caesar/features/simon/ui/simon_screen.dart';
+import 'package:caesar/features/stats/logic/streak_logic.dart';
 import 'package:caesar/services/audio_service.dart';
 import 'package:caesar/services/storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Always returns the same question so tests can submit a known answer.
@@ -49,6 +55,12 @@ Future<ProviderContainer> _container() async {
 
 void main() {
   testWidgets('App boots to splash, then routes to home', (tester) async {
+    // Use a phone-sized surface so every mode tile in the lazy grid is built.
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     SharedPreferences.setMockInitialValues({});
     final prefs = await SharedPreferences.getInstance();
 
@@ -66,10 +78,12 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
     await tester.pumpAndSettle();
 
-    expect(find.text('Welcome to Caesar'), findsOneWidget);
+    // The home screen shows a tile per training mode.
+    expect(find.text('Choose a workout'), findsOneWidget);
     expect(find.text('Spelling'), findsOneWidget);
     expect(find.text('Math'), findsOneWidget);
     expect(find.text('Simon'), findsOneWidget);
+    expect(find.text('N-Back'), findsOneWidget);
   });
 
   testWidgets('Wrong answers drive the game to Game Over', (tester) async {
@@ -91,8 +105,9 @@ void main() {
       await tester.pump();
     }
 
-    expect(find.text('Game Over'), findsOneWidget);
-    expect(find.text('Restart'), findsOneWidget);
+    // Any end-of-run screen offers a replay; a first run also sets a record.
+    expect(find.text('Play again'), findsOneWidget);
+    expect(find.text('Back to Home'), findsOneWidget);
   });
 
   testWidgets('Simon plays back a sequence then awaits input', (tester) async {
@@ -108,7 +123,7 @@ void main() {
     await tester.pump();
 
     // Starts in the watch/playback phase.
-    expect(find.text('Level 0'), findsOneWidget);
+    expect(find.text('LEVEL'), findsOneWidget);
     expect(find.text('Watch the sequence…'), findsOneWidget);
 
     // After playback completes, control passes to the player.
@@ -315,6 +330,151 @@ void main() {
     });
   });
 
+  group('Streaks', () {
+    final monday = DateTime(2026, 8, 24);
+
+    test('first ever session starts a streak of 1', () {
+      final s = applySession(const PlayerStats(), monday);
+      expect(s.currentStreak, 1);
+      expect(s.bestStreak, 1);
+      expect(s.gamesPlayed, 1);
+      expect(s.lastPlayed, dayKey(monday));
+    });
+
+    test('playing again the same day does not inflate the streak', () {
+      var s = applySession(const PlayerStats(), monday);
+      s = applySession(s, monday.add(const Duration(hours: 6)));
+      expect(s.currentStreak, 1);
+      expect(s.gamesPlayed, 2);
+    });
+
+    test('playing the next day extends the streak', () {
+      var s = applySession(const PlayerStats(), monday);
+      s = applySession(s, monday.add(const Duration(days: 1)));
+      s = applySession(s, monday.add(const Duration(days: 2)));
+      expect(s.currentStreak, 3);
+      expect(s.bestStreak, 3);
+    });
+
+    test('a missed day resets the streak but keeps the best', () {
+      var s = applySession(const PlayerStats(), monday);
+      s = applySession(s, monday.add(const Duration(days: 1)));
+      expect(s.currentStreak, 2);
+
+      // Skip a day.
+      s = applySession(s, monday.add(const Duration(days: 3)));
+      expect(s.currentStreak, 1);
+      expect(s.bestStreak, 2);
+    });
+
+    test('trainedToday reflects the current day only', () {
+      final s = applySession(const PlayerStats(), monday);
+      expect(trainedToday(s, monday), isTrue);
+      expect(trainedToday(s, monday.add(const Duration(days: 1))), isFalse);
+    });
+  });
+
+  group('LeaderboardApi', () {
+    LeaderboardApi apiReturning(
+      int status,
+      String body, {
+      void Function(http.Request)? onRequest,
+    }) {
+      return LeaderboardApi(
+        baseUrl: 'http://test.local',
+        client: MockClient((request) async {
+          onRequest?.call(request);
+          return http.Response(
+            body,
+            status,
+            headers: {'content-type': 'application/json'},
+          );
+        }),
+      );
+    }
+
+    test(
+      'submitScore posts the expected payload and parses the result',
+      () async {
+        http.Request? captured;
+        final api = apiReturning(
+          201,
+          '{"best":42,"improved":true,"rank":3}',
+          onRequest: (r) => captured = r,
+        );
+
+        final result = await api.submitScore(
+          deviceId: 'device-12345678',
+          mode: TrainingMode.math,
+          score: 42,
+          displayName: 'Ada',
+        );
+
+        expect(result.best, 42);
+        expect(result.improved, isTrue);
+        expect(result.rank, 3);
+
+        final body = jsonDecode(captured!.body) as Map<String, dynamic>;
+        expect(body['mode'], 'math');
+        expect(body['score'], 42);
+        expect(body['displayName'], 'Ada');
+        expect(captured!.url.path, '/v1/scores');
+      },
+    );
+
+    test('submitScore omits a blank display name', () async {
+      http.Request? captured;
+      final api = apiReturning(
+        201,
+        '{"best":1,"improved":true,"rank":1}',
+        onRequest: (r) => captured = r,
+      );
+
+      await api.submitScore(
+        deviceId: 'device-12345678',
+        mode: TrainingMode.simon,
+        score: 1,
+        displayName: '   ',
+      );
+
+      final body = jsonDecode(captured!.body) as Map<String, dynamic>;
+      expect(body.containsKey('displayName'), isFalse);
+    });
+
+    test('leaderboard parses rows and the isYou flag', () async {
+      final api = apiReturning(
+        200,
+        '[{"rank":1,"displayName":"Bob","score":9},'
+        '{"rank":2,"displayName":"Ada","score":4,"isYou":true}]',
+      );
+
+      final rows = await api.leaderboard(mode: TrainingMode.simon);
+      expect(rows, hasLength(2));
+      expect(rows.first.displayName, 'Bob');
+      expect(rows.first.isYou, isFalse);
+      expect(rows[1].isYou, isTrue);
+    });
+
+    test('throws LeaderboardException on a server error', () async {
+      final api = apiReturning(500, 'boom');
+      expect(
+        () => api.leaderboard(mode: TrainingMode.math),
+        throwsA(isA<LeaderboardException>()),
+      );
+    });
+
+    test('throws LeaderboardException when the network fails', () async {
+      final api = LeaderboardApi(
+        baseUrl: 'http://test.local',
+        client: MockClient((_) async => throw const SocketException('offline')),
+      );
+      expect(
+        () => api.leaderboard(mode: TrainingMode.math),
+        throwsA(isA<LeaderboardException>()),
+      );
+    });
+  });
+
   group('N-Back logic', () {
     test('isNBackMatch: first n trials never match', () {
       expect(isNBackMatch([3, 3, 3], 0, 2), isFalse);
@@ -375,7 +535,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.textContaining('Trial 1 /'), findsOneWidget);
+    expect(find.textContaining('TRIAL 1 /'), findsOneWidget);
 
     // Each trial is stimulusOn + gap ≈ 3s; drive past the whole session.
     for (var i = 0; i < NBackController.totalTrials; i++) {

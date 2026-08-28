@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:caesar/core/training_mode.dart';
 import 'package:caesar/features/highscores/state/highscores_controller.dart';
+import 'package:caesar/features/stats/state/stats_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'nback_audio.dart';
@@ -104,6 +105,7 @@ class NBackController extends Notifier<NBackState> {
       ref
           .read(highscoresControllerProvider.notifier)
           .submit(TrainingMode.nback, state.score);
+      ref.read(statsControllerProvider.notifier).recordSession();
     } else {
       state = scored.copyWith(trialIndex: nextIndex);
       _timer = Timer(gap, () => _startTrial(generation));

@@ -8,6 +8,9 @@ class AppInfo {
   static const String name = 'Caesar';
   static const String tagline = 'Train your brain the fun way!';
   static const String version = '1.0.0';
+
+  /// How many rows to request from the global leaderboard.
+  static const int leaderboardPageSize = 50;
 }
 
 class GameConfig {

@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:caesar/core/training_mode.dart';
 import 'package:caesar/features/highscores/state/highscores_controller.dart';
+import 'package:caesar/features/stats/state/stats_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'simon_state.dart';
@@ -90,6 +91,7 @@ class SimonController extends Notifier<SimonState> {
         ref
             .read(highscoresControllerProvider.notifier)
             .submit(TrainingMode.simon, state.level);
+        ref.read(statsControllerProvider.notifier).recordSession();
     }
   }
 

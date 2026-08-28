@@ -5,6 +5,7 @@ import 'package:caesar/core/constants.dart';
 import 'package:caesar/core/training_mode.dart';
 import 'package:caesar/features/highscores/state/highscores_controller.dart';
 import 'package:caesar/features/settings/state/settings_controller.dart';
+import 'package:caesar/features/stats/state/stats_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'game_state.dart';
@@ -46,12 +47,14 @@ class GameController extends Notifier<GameState> {
   }) {
     final question = _generator.generate(_mode, difficulty);
     _answer = question.answer;
+    final allotted = max(5, 12 - difficulty);
     return GameState(
       prompt: question.prompt,
       score: score,
       strikes: strikes,
       difficulty: difficulty,
-      timeLeft: max(5, 12 - difficulty),
+      timeLeft: allotted,
+      totalTime: allotted,
       status: GameStatus.playing,
     );
   }
@@ -95,6 +98,7 @@ class GameController extends Notifier<GameState> {
       ref
           .read(highscoresControllerProvider.notifier)
           .submit(trainingMode, state.score);
+      ref.read(statsControllerProvider.notifier).recordSession();
     } else {
       state = _nextRound(
         score: state.score,

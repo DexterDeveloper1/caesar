@@ -10,6 +10,9 @@ class GameState {
   final int strikes;
   final int difficulty;
   final int timeLeft;
+
+  /// Seconds allotted for the current question, so the UI can show progress.
+  final int totalTime;
   final GameStatus status;
 
   const GameState({
@@ -18,6 +21,7 @@ class GameState {
     required this.strikes,
     required this.difficulty,
     required this.timeLeft,
+    required this.totalTime,
     required this.status,
   });
 
@@ -29,6 +33,7 @@ class GameState {
     int? strikes,
     int? difficulty,
     int? timeLeft,
+    int? totalTime,
     GameStatus? status,
   }) {
     return GameState(
@@ -37,6 +42,7 @@ class GameState {
       strikes: strikes ?? this.strikes,
       difficulty: difficulty ?? this.difficulty,
       timeLeft: timeLeft ?? this.timeLeft,
+      totalTime: totalTime ?? this.totalTime,
       status: status ?? this.status,
     );
   }
