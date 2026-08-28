@@ -8,9 +8,14 @@ beat your own highscore. No account, no network — it all runs on-device.
 
 - **Spelling** — a letter is missing from a word; type it before time runs out.
 - **Math** — solve generated arithmetic problems; difficulty ramps as you score.
+- **Simon** — watch a growing color sequence and repeat it from memory.
+- **N-Back** — a Dual N-Back working-memory task: each trial lights a grid cell
+  and speaks a letter; flag when the position or the sound repeats from N steps
+  back. Uses text-to-speech for the audio channel.
 
-Three strikes ends the run. Difficulty (and time pressure) increases with every
-correct answer.
+Spelling and Math are timed; three strikes ends the run and difficulty rises
+with every correct answer. Simon runs until you miss. N-Back runs a fixed set of
+trials and scores each channel (hits, misses, false alarms).
 
 ## Tech stack
 
@@ -26,10 +31,31 @@ lib/
   features/
     splash/       Launch screen
     home/         Landing + mode selection
-    game/         Core gameplay (question generation, scoring, timer)
+    game/         Spelling & Math gameplay (generation, scoring, timer)
+    simon/        Simon memory-sequence game
+    nback/        Dual N-Back working-memory task (TTS audio)
     highscores/   Highscores board
     settings/     App settings
+  core/           Shared enums (TrainingMode), constants, design tokens
+  services/       Storage (shared_preferences), audio/haptics
+assets/
+  audio/          Music loop + sound effects (WAV)
 ```
+
+## Audio
+
+Background music and sound effects are handled by `lib/services/audio_service.dart`
+(built on `audioplayers`), with two independent toggles in Settings:
+
+- **Sound effects** — correct/wrong/game-over/level-up stings, UI taps, and a
+  distinct musical tone per Simon pad, plus haptics.
+- **Background music** — one looping bed, played app-wide. It stops while the
+  app is backgrounded and is silenced during N-Back so the spoken letters stay
+  audible.
+
+The shipped files in `assets/audio/` are simple synthesized placeholders. To use
+your own audio, drop in replacements at the same paths (see the `Sfx` class for
+the list); `.ogg` and `.mp3` also work and are much smaller than WAV.
 
 ## Getting started
 

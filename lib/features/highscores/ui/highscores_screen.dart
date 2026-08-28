@@ -1,4 +1,4 @@
-import 'package:caesar/features/game/logic/game_type.dart';
+import 'package:caesar/core/training_mode.dart';
 import 'package:caesar/features/highscores/state/highscores_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +6,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// Shows the best score per mode, backed by persisted storage.
 class HighscoresScreen extends ConsumerWidget {
   const HighscoresScreen({super.key});
+
+  static IconData _iconFor(TrainingMode mode) => switch (mode) {
+    TrainingMode.spelling => Icons.spellcheck,
+    TrainingMode.math => Icons.calculate,
+    TrainingMode.simon => Icons.grid_view,
+    TrainingMode.nback => Icons.memory,
+  };
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -18,10 +25,11 @@ class HighscoresScreen extends ConsumerWidget {
       body: hasAny
           ? ListView(
               children: [
-                for (final mode in GameType.values)
+                for (final mode in TrainingMode.values)
                   ListTile(
                     leading: Icon(_iconFor(mode)),
                     title: Text(mode.label),
+                    subtitle: Text(mode.scoreLabel),
                     trailing: Text(
                       '${scores[mode] ?? 0}',
                       style: theme.textTheme.titleLarge,
@@ -32,11 +40,6 @@ class HighscoresScreen extends ConsumerWidget {
           : _EmptyState(theme: theme),
     );
   }
-
-  IconData _iconFor(GameType mode) => switch (mode) {
-    GameType.math => Icons.calculate,
-    GameType.spelling => Icons.spellcheck,
-  };
 }
 
 class _EmptyState extends StatelessWidget {

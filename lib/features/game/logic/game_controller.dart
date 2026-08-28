@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:caesar/core/constants.dart';
+import 'package:caesar/core/training_mode.dart';
 import 'package:caesar/features/highscores/state/highscores_controller.dart';
 import 'package:caesar/features/settings/state/settings_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -88,9 +89,12 @@ class GameController extends Notifier<GameState> {
     if (strikes >= GameConfig.maxStrikes) {
       _timer?.cancel();
       state = state.copyWith(strikes: strikes, status: GameStatus.gameOver);
+      final trainingMode = _mode == GameType.math
+          ? TrainingMode.math
+          : TrainingMode.spelling;
       ref
           .read(highscoresControllerProvider.notifier)
-          .submit(_mode, state.score);
+          .submit(trainingMode, state.score);
     } else {
       state = _nextRound(
         score: state.score,

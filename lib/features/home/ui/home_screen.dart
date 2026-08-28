@@ -1,6 +1,6 @@
 import 'package:caesar/app/router.dart';
 import 'package:caesar/core/constants.dart';
-import 'package:caesar/features/game/logic/game_type.dart';
+import 'package:caesar/core/training_mode.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -42,7 +42,27 @@ class _HomeScreenState extends State<HomeScreen>
     super.dispose();
   }
 
-  void _play(GameType mode) => context.go(Routes.game(mode.name));
+  /// Modes shown on the home screen, in order.
+  static const List<TrainingMode> _modes = [
+    TrainingMode.spelling,
+    TrainingMode.math,
+    TrainingMode.simon,
+    TrainingMode.nback,
+  ];
+
+  static IconData _iconFor(TrainingMode mode) => switch (mode) {
+    TrainingMode.spelling => Icons.spellcheck,
+    TrainingMode.math => Icons.calculate,
+    TrainingMode.simon => Icons.grid_view,
+    TrainingMode.nback => Icons.memory,
+  };
+
+  static String _routeFor(TrainingMode mode) => switch (mode) {
+    TrainingMode.spelling => Routes.game('spelling'),
+    TrainingMode.math => Routes.game('math'),
+    TrainingMode.simon => Routes.simon,
+    TrainingMode.nback => Routes.nback,
+  };
 
   Future<bool> _confirmExit() async {
     final shouldExit = await showDialog<bool>(
@@ -152,17 +172,14 @@ class _HomeScreenState extends State<HomeScreen>
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              FilledButton.icon(
-                                icon: const Icon(Icons.spellcheck),
-                                label: const Text('Spelling Mode'),
-                                onPressed: () => _play(GameType.spelling),
-                              ),
-                              const SizedBox(height: 12),
-                              FilledButton.icon(
-                                icon: const Icon(Icons.calculate),
-                                label: const Text('Math Mode'),
-                                onPressed: () => _play(GameType.math),
-                              ),
+                              for (final mode in _modes) ...[
+                                FilledButton.icon(
+                                  icon: Icon(_iconFor(mode)),
+                                  label: Text(mode.label),
+                                  onPressed: () => context.go(_routeFor(mode)),
+                                ),
+                                const SizedBox(height: 12),
+                              ],
                             ],
                           ),
                           const Spacer(),

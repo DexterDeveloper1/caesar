@@ -1,4 +1,4 @@
-import 'package:caesar/features/game/logic/game_type.dart';
+import 'package:caesar/core/training_mode.dart';
 import 'package:caesar/features/settings/state/settings_controller.dart';
 import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,13 +13,15 @@ class StorageService {
   StorageService(this._prefs);
 
   static const _kSound = 'settings.soundEnabled';
+  static const _kMusic = 'settings.musicEnabled';
   static const _kThemeMode = 'settings.themeMode';
   static const _kStartDifficulty = 'settings.startDifficulty';
-  static String _highscoreKey(GameType mode) => 'highscore.${mode.name}';
+  static String _highscoreKey(TrainingMode mode) => 'highscore.${mode.name}';
 
   Settings readSettings() {
     return Settings(
       soundEnabled: _prefs.getBool(_kSound) ?? true,
+      musicEnabled: _prefs.getBool(_kMusic) ?? true,
       themeMode: ThemeMode
           .values[_prefs.getInt(_kThemeMode) ?? ThemeMode.system.index],
       startDifficulty: _prefs.getInt(_kStartDifficulty) ?? 1,
@@ -28,18 +30,19 @@ class StorageService {
 
   Future<void> writeSettings(Settings settings) async {
     await _prefs.setBool(_kSound, settings.soundEnabled);
+    await _prefs.setBool(_kMusic, settings.musicEnabled);
     await _prefs.setInt(_kThemeMode, settings.themeMode.index);
     await _prefs.setInt(_kStartDifficulty, settings.startDifficulty);
   }
 
-  Map<GameType, int> readHighscores() {
+  Map<TrainingMode, int> readHighscores() {
     return {
-      for (final mode in GameType.values)
+      for (final mode in TrainingMode.values)
         mode: _prefs.getInt(_highscoreKey(mode)) ?? 0,
     };
   }
 
-  Future<void> writeHighscore(GameType mode, int score) =>
+  Future<void> writeHighscore(TrainingMode mode, int score) =>
       _prefs.setInt(_highscoreKey(mode), score);
 }
 

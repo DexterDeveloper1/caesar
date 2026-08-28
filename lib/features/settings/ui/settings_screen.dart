@@ -16,10 +16,18 @@ class SettingsScreen extends ConsumerWidget {
       body: ListView(
         children: [
           SwitchListTile(
+            secondary: const Icon(Icons.graphic_eq),
             title: const Text('Sound effects'),
             subtitle: const Text('Play sounds during a game'),
             value: settings.soundEnabled,
             onChanged: controller.setSoundEnabled,
+          ),
+          SwitchListTile(
+            secondary: const Icon(Icons.music_note),
+            title: const Text('Background music'),
+            subtitle: const Text('Loop a soft track while you play'),
+            value: settings.musicEnabled,
+            onChanged: controller.setMusicEnabled,
           ),
           const Divider(height: 0),
           ListTile(

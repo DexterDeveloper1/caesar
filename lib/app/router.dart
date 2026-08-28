@@ -2,7 +2,9 @@ import 'package:caesar/features/game/logic/game_type.dart';
 import 'package:caesar/features/game/ui/game_screen.dart';
 import 'package:caesar/features/highscores/ui/highscores_screen.dart';
 import 'package:caesar/features/home/ui/home_screen.dart';
+import 'package:caesar/features/nback/ui/nback_screen.dart';
 import 'package:caesar/features/settings/ui/settings_screen.dart';
+import 'package:caesar/features/simon/ui/simon_screen.dart';
 import 'package:caesar/features/splash/ui/splash_screen.dart';
 import 'package:go_router/go_router.dart';
 
@@ -14,6 +16,8 @@ class Routes {
   static const home = '/home';
   static const settings = '/settings';
   static const highscores = '/highscores';
+  static const simon = '/simon';
+  static const nback = '/nback';
 
   /// Game route takes a `mode` path parameter (`math` or `spelling`).
   static String game(String mode) => '/game/$mode';
@@ -39,6 +43,16 @@ final caesarRouter = GoRouter(
         final mode = GameType.fromString(state.pathParameters['mode']);
         return GameScreen(mode: mode);
       },
+    ),
+    GoRoute(
+      path: Routes.simon,
+      name: 'simon',
+      builder: (context, state) => const SimonScreen(),
+    ),
+    GoRoute(
+      path: Routes.nback,
+      name: 'nback',
+      builder: (context, state) => const NBackScreen(),
     ),
     GoRoute(
       path: Routes.highscores,
