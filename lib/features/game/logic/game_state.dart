@@ -13,6 +13,11 @@ class GameState {
 
   /// Seconds allotted for the current question, so the UI can show progress.
   final int totalTime;
+
+  /// True while a word is being flashed for memorisation; input is disabled
+  /// and the countdown has not started yet.
+  final bool revealing;
+
   final GameStatus status;
 
   const GameState({
@@ -23,6 +28,7 @@ class GameState {
     required this.timeLeft,
     required this.totalTime,
     required this.status,
+    this.revealing = false,
   });
 
   bool get isGameOver => status == GameStatus.gameOver;
@@ -34,6 +40,7 @@ class GameState {
     int? difficulty,
     int? timeLeft,
     int? totalTime,
+    bool? revealing,
     GameStatus? status,
   }) {
     return GameState(
@@ -43,6 +50,7 @@ class GameState {
       difficulty: difficulty ?? this.difficulty,
       timeLeft: timeLeft ?? this.timeLeft,
       totalTime: totalTime ?? this.totalTime,
+      revealing: revealing ?? this.revealing,
       status: status ?? this.status,
     );
   }

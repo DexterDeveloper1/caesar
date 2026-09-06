@@ -6,16 +6,37 @@ beat your own highscore. No account, no network — it all runs on-device.
 
 ## Modes
 
-- **Spelling** — a letter is missing from a word; type it before time runs out.
+- **Spelling** — a word flashes briefly, then disappears; retype it from
+  memory. Recall (not recognition) is what actually exercises working memory,
+  and unlike a single hidden letter it has exactly one correct answer.
 - **Math** — solve generated arithmetic problems; difficulty ramps as you score.
 - **Simon** — watch a growing color sequence and repeat it from memory.
 - **N-Back** — a Dual N-Back working-memory task: each trial lights a grid cell
   and speaks a letter; flag when the position or the sound repeats from N steps
-  back. Uses text-to-speech for the audio channel.
+  back. Uses text-to-speech for the audio channel. **N adapts between sessions**
+  — it rises above 85% accuracy and falls below 60%, keeping the task at the
+  edge of your ability.
 
-Spelling and Math are timed; three strikes ends the run and difficulty rises
-with every correct answer. Simon runs until you miss. N-Back runs a fixed set of
-trials and scores each channel (hits, misses, false alarms).
+Spelling and Math are timed; three strikes ends the run. Simon runs until you
+miss. N-Back runs a fixed set of trials and scores each channel (hits, misses,
+false alarms).
+
+### Difficulty
+
+Levels are **earned, not incremented**: three correct answers in a row promote
+you, one wrong answer steps you back down. That keeps the challenge tracking
+actual skill (the "flow channel") instead of sprinting past it.
+
+Math follows a banded curve rather than a straight ramp — each operation is
+introduced on its own at a small size, then mixed with what came before, then
+grown: addition within 10 → within 20 → subtraction joins → ranges grow →
+×2–5 alone → mixed → ×2–10 → division (as the inverse of tables already
+practised) → everything mixed. Operands are capped per band, so a run can no
+longer leap from `1 + 1` to `98 × 79`.
+
+Spelling draws from ~1,900 common nouns (via the MIT-licensed `english_words`
+package) banded by length, dealt from a shuffle bag so a word cannot repeat
+until its band is exhausted. N-Back adapts N between sessions.
 
 ## Tech stack
 

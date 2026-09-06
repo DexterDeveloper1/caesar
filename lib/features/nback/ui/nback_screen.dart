@@ -1,6 +1,7 @@
 import 'package:caesar/core/design.dart';
 import 'package:caesar/core/training_mode.dart';
 import 'package:caesar/core/widgets/juice.dart';
+import 'package:caesar/core/widgets/quit_guard.dart';
 import 'package:caesar/features/game/ui/results_view.dart';
 import 'package:caesar/features/nback/logic/nback_controller.dart';
 import 'package:caesar/features/nback/logic/nback_state.dart';
@@ -71,119 +72,125 @@ class _NBackScreenState extends ConsumerState<NBackScreen> {
         ? 0.0
         : state.trialNumber / state.totalTrials;
 
-    return Scaffold(
-      body: AppBackground(
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(Insets.lg),
-            child: Column(
-              children: [
-                _TopBar(),
-                const SizedBox(height: Insets.md),
+    return QuitGuard(
+      message: 'This session will end and will not be scored.',
+      child: Scaffold(
+        body: AppBackground(
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(Insets.lg),
+              child: Column(
+                children: [
+                  _TopBar(),
+                  const SizedBox(height: Insets.md),
 
-                // Session progress + the N level.
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'TRIAL ${state.trialNumber} / ${state.totalTrials}',
-                            style: TextStyle(
-                              color: palette.textMuted,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1.2,
+                  // Session progress + the N level.
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'TRIAL ${state.trialNumber} / ${state.totalTrials}',
+                              style: TextStyle(
+                                color: palette.textMuted,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.2,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: Insets.sm),
-                          ClipRRect(
-                            borderRadius: Radii.pill,
-                            child: TweenAnimationBuilder<double>(
-                              tween: Tween(begin: 0, end: progress),
-                              duration: Motion.normal,
-                              curve: Motion.emphasized,
-                              builder: (context, v, _) =>
-                                  LinearProgressIndicator(
-                                    value: v,
-                                    minHeight: 8,
-                                    backgroundColor: palette.surfaceBorder,
-                                    valueColor: AlwaysStoppedAnimation(
-                                      style.accent,
+                            const SizedBox(height: Insets.sm),
+                            ClipRRect(
+                              borderRadius: Radii.pill,
+                              child: TweenAnimationBuilder<double>(
+                                tween: Tween(begin: 0, end: progress),
+                                duration: Motion.normal,
+                                curve: Motion.emphasized,
+                                builder: (context, v, _) =>
+                                    LinearProgressIndicator(
+                                      value: v,
+                                      minHeight: 8,
+                                      backgroundColor: palette.surfaceBorder,
+                                      valueColor: AlwaysStoppedAnimation(
+                                        style.accent,
+                                      ),
                                     ),
-                                  ),
+                              ),
                             ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: Insets.md),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: Insets.md,
+                          vertical: Insets.sm,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: style.gradient,
+                          borderRadius: Radii.pill,
+                        ),
+                        child: Text(
+                          'N = ${state.n}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: Insets.md),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: Insets.md,
-                        vertical: Insets.sm,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: style.gradient,
-                        borderRadius: Radii.pill,
-                      ),
-                      child: Text(
-                        'N = ${state.n}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
+                    ],
+                  ),
+                  const SizedBox(height: Insets.md),
+                  Text(
+                    'Tap when the position or the spoken letter repeats '
+                    'from ${state.n} steps back.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: palette.textMuted, fontSize: 12),
+                  ),
+                  // Expanded so the square grid shrinks to the available height
+                  // instead of overflowing on short screens.
+                  Expanded(
+                    child: Center(
+                      child: AspectRatio(
+                        aspectRatio: 1,
+                        child: _Grid(
+                          activeCell: state.activeCell,
+                          style: style,
                         ),
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: Insets.md),
-                Text(
-                  'Tap when the position or the spoken letter repeats '
-                  'from ${state.n} steps back.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: palette.textMuted, fontSize: 12),
-                ),
-                // Expanded so the square grid shrinks to the available height
-                // instead of overflowing on short screens.
-                Expanded(
-                  child: Center(
-                    child: AspectRatio(
-                      aspectRatio: 1,
-                      child: _Grid(activeCell: state.activeCell, style: style),
-                    ),
                   ),
-                ),
-                const SizedBox(height: Insets.md),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _ResponseButton(
-                        label: 'Position',
-                        icon: Icons.grid_view_rounded,
-                        active: state.positionPressed,
-                        onPressed: () {
-                          ref.read(audioServiceProvider).tap();
-                          controller.pressPosition();
-                        },
+                  const SizedBox(height: Insets.md),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _ResponseButton(
+                          label: 'Position',
+                          icon: Icons.grid_view_rounded,
+                          active: state.positionPressed,
+                          onPressed: () {
+                            ref.read(audioServiceProvider).tap();
+                            controller.pressPosition();
+                          },
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: Insets.md),
-                    Expanded(
-                      child: _ResponseButton(
-                        label: 'Sound',
-                        icon: Icons.volume_up_rounded,
-                        active: state.audioPressed,
-                        onPressed: () {
-                          ref.read(audioServiceProvider).tap();
-                          controller.pressAudio();
-                        },
+                      const SizedBox(width: Insets.md),
+                      Expanded(
+                        child: _ResponseButton(
+                          label: 'Sound',
+                          icon: Icons.volume_up_rounded,
+                          active: state.audioPressed,
+                          onPressed: () {
+                            ref.read(audioServiceProvider).tap();
+                            controller.pressAudio();
+                          },
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -279,11 +286,17 @@ class _ResponseButton extends StatelessWidget {
               color: active ? Colors.white : palette.textPrimary,
             ),
             const SizedBox(width: Insets.sm),
-            Text(
-              label,
-              style: TextStyle(
-                color: active ? Colors.white : palette.textPrimary,
-                fontWeight: FontWeight.w700,
+            // Flexible so the label ellipsises on narrow phones rather than
+            // overflowing the button.
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: active ? Colors.white : palette.textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ],

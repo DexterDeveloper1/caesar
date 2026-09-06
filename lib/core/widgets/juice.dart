@@ -16,11 +16,19 @@ class Pressable extends StatefulWidget {
   final VoidCallback? onPressed;
   final double pressedScale;
 
+  /// Whether a disabled control should fade out.
+  ///
+  /// Right for buttons, wrong for a game board: Simon's pads are only
+  /// *temporarily* uninteractive while the sequence plays, and fading them all
+  /// makes the board look broken rather than busy.
+  final bool dimWhenDisabled;
+
   const Pressable({
     super.key,
     required this.child,
     required this.onPressed,
     this.pressedScale = 0.95,
+    this.dimWhenDisabled = true,
   });
 
   @override
@@ -47,7 +55,10 @@ class _PressableState extends State<Pressable> {
         scale: _down ? widget.pressedScale : 1.0,
         duration: Motion.instant,
         curve: Motion.emphasized,
-        child: Opacity(opacity: enabled ? 1 : 0.5, child: widget.child),
+        child: Opacity(
+          opacity: enabled || !widget.dimWhenDisabled ? 1 : 0.5,
+          child: widget.child,
+        ),
       ),
     );
   }

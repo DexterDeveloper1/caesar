@@ -7,6 +7,7 @@ import 'package:caesar/features/highscores/state/highscores_controller.dart';
 import 'package:caesar/features/stats/logic/streak_logic.dart';
 import 'package:caesar/features/stats/state/stats_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -75,8 +76,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
         final shouldExit = await _confirmExit();
-        if (!shouldExit || !context.mounted) return;
-        Navigator.of(context).pop();
+        if (!shouldExit) return;
+        // Home is the only route, so popping it would just leave a blank
+        // window. Ask the platform to close the app instead.
+        await SystemNavigator.pop();
       },
       child: Scaffold(
         body: AppBackground(

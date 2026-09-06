@@ -153,10 +153,35 @@ void main() {
       }
     });
 
-    test('spelling hides exactly one letter', () {
+    test('spelling flashes a whole word and masks it for recall', () {
       final q = QuestionGenerator().generate(GameType.spelling, 1);
-      expect(q.prompt.contains('_'), isTrue);
-      expect(q.answer.length, 1);
+      // The word is shown first, then only its shape remains.
+      expect(q.hasRevealPhase, isTrue);
+      expect(q.reveal, q.answer);
+      expect(q.answer.length, greaterThan(2));
+      expect(q.prompt.replaceAll(' ', ''), '•' * q.answer.length);
+    });
+
+    test('spelling words get longer as difficulty rises', () {
+      final generator = QuestionGenerator();
+      int longestAt(int difficulty) {
+        var longest = 0;
+        for (var i = 0; i < 40; i++) {
+          final q = generator.generate(GameType.spelling, difficulty);
+          longest = q.answer.length > longest ? q.answer.length : longest;
+        }
+        return longest;
+      }
+
+      expect(longestAt(9), greaterThan(longestAt(1)));
+    });
+
+    test('reveal time shrinks with difficulty but has a floor', () {
+      expect(
+        QuestionGenerator.revealMillis(5),
+        lessThan(QuestionGenerator.revealMillis(1)),
+      );
+      expect(QuestionGenerator.revealMillis(50), greaterThanOrEqualTo(700));
     });
   });
 
@@ -508,6 +533,44 @@ void main() {
       expect(channelScore(hits: 1, falseAlarms: 4), 0);
     });
 
+    test('nextN raises the load on high accuracy', () {
+      expect(nextN(2, 0.90), 3);
+    });
+
+    test('nextN drops back when accuracy collapses', () {
+      expect(nextN(3, 0.40), 2);
+    });
+
+    test('nextN holds steady in the middle band', () {
+      expect(nextN(2, 0.70), 2);
+    });
+
+    test('nextN respects the bounds', () {
+      expect(nextN(minN, 0.10), minN);
+      expect(nextN(maxN, 0.99), maxN);
+    });
+
+    test('sessionAccuracy counts hits and correct rejections', () {
+      expect(
+        sessionAccuracy(
+          hits: 3,
+          misses: 1,
+          falseAlarms: 1,
+          correctRejections: 5,
+        ),
+        closeTo(0.8, 0.001),
+      );
+      expect(
+        sessionAccuracy(
+          hits: 0,
+          misses: 0,
+          falseAlarms: 0,
+          correctRejections: 0,
+        ),
+        0,
+      );
+    });
+
     test('ChannelStats.record accumulates outcomes', () {
       var stats = const ChannelStats();
       stats = stats.record(TrialOutcome.hit).record(TrialOutcome.hit);
@@ -538,7 +601,11 @@ void main() {
     expect(find.textContaining('TRIAL 1 /'), findsOneWidget);
 
     // Each trial is stimulusOn + gap ≈ 3s; drive past the whole session.
-    for (var i = 0; i < NBackController.totalTrials; i++) {
+    for (
+      var i = 0;
+      i < NBackController.trialsPerSession + NBackController.startingN;
+      i++
+    ) {
       await tester.pump(const Duration(seconds: 3));
     }
     await tester.pumpAndSettle();

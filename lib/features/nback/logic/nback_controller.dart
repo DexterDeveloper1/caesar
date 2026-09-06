@@ -19,8 +19,17 @@ class NBackController extends Notifier<NBackState> {
 
   NBackController({Random? rng}) : _rng = rng ?? Random();
 
-  static const int n = 2;
-  static const int totalTrials = 20 + n;
+  /// Starting working-memory load; raised or lowered between sessions by
+  /// [nextN] according to how the player performed.
+  static const int startingN = 2;
+  static const int trialsPerSession = 20;
+
+  int _n = startingN;
+
+  /// The first N trials can never be matches, so the session is padded to keep
+  /// the number of scoreable trials constant as N changes.
+  int get _totalTrials => trialsPerSession + _n;
+
   static const int gridSize = 9;
   static const List<String> letters = ['C', 'H', 'K', 'L', 'Q', 'R', 'S', 'T'];
   static const Duration stimulusOn = Duration(milliseconds: 2500);
@@ -44,14 +53,30 @@ class NBackController extends Notifier<NBackState> {
     _generateSequences();
     _generation++;
     scheduleMicrotask(() => _startTrial(_generation));
-    return const NBackState.initial(n: n, totalTrials: totalTrials);
+    return NBackState.initial(n: _n, totalTrials: _totalTrials);
   }
 
   void _generateSequences() {
-    _positions = List.generate(totalTrials, (_) => _rng.nextInt(gridSize));
-    _letterIndices = List.generate(
-      totalTrials,
-      (_) => _rng.nextInt(letters.length),
+    // Plant a fixed number of targets rather than hoping random stimuli
+    // collide — see [planTargets].
+    final (positionTargets, audioTargets) = planTargets(
+      trials: _totalTrials,
+      n: _n,
+      rng: _rng,
+    );
+    _positions = buildSequence(
+      trials: _totalTrials,
+      n: _n,
+      alphabet: gridSize,
+      targets: positionTargets,
+      rng: _rng,
+    );
+    _letterIndices = buildSequence(
+      trials: _totalTrials,
+      n: _n,
+      alphabet: letters.length,
+      targets: audioTargets,
+      rng: _rng,
     );
   }
 
@@ -82,11 +107,11 @@ class NBackController extends Notifier<NBackState> {
     final i = state.trialIndex;
 
     final positionOutcome = classifyResponse(
-      isMatch: isNBackMatch(_positions, i, n),
+      isMatch: isNBackMatch(_positions, i, _n),
       pressed: state.positionPressed,
     );
     final audioOutcome = classifyResponse(
-      isMatch: isNBackMatch(_letterIndices, i, n),
+      isMatch: isNBackMatch(_letterIndices, i, _n),
       pressed: state.audioPressed,
     );
 
@@ -97,7 +122,7 @@ class NBackController extends Notifier<NBackState> {
     );
 
     final nextIndex = i + 1;
-    if (nextIndex >= totalTrials) {
+    if (nextIndex >= _totalTrials) {
       state = scored.copyWith(
         trialIndex: nextIndex,
         status: NBackStatus.finished,
@@ -106,6 +131,17 @@ class NBackController extends Notifier<NBackState> {
           .read(highscoresControllerProvider.notifier)
           .submit(TrainingMode.nback, state.score);
       ref.read(statsControllerProvider.notifier).recordSession();
+
+      // Move the difficulty toward the edge of the player's ability so the
+      // next session keeps training rather than drilling.
+      final accuracy = sessionAccuracy(
+        hits: state.position.hits + state.audio.hits,
+        misses: state.position.misses + state.audio.misses,
+        falseAlarms: state.position.falseAlarms + state.audio.falseAlarms,
+        correctRejections:
+            state.position.correctRejections + state.audio.correctRejections,
+      );
+      _n = nextN(_n, accuracy);
     } else {
       state = scored.copyWith(trialIndex: nextIndex);
       _timer = Timer(gap, () => _startTrial(generation));
@@ -116,7 +152,7 @@ class NBackController extends Notifier<NBackState> {
     _timer?.cancel();
     _generateSequences();
     _generation++;
-    state = const NBackState.initial(n: n, totalTrials: totalTrials);
+    state = NBackState.initial(n: _n, totalTrials: _totalTrials);
     scheduleMicrotask(() => _startTrial(_generation));
   }
 }

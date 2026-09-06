@@ -42,8 +42,35 @@ class AudioService {
   final List<AudioPlayer> _sfxPool = [];
   int _next = 0;
 
+  /// Configured once per process.
+  static bool _contextConfigured = false;
+
+  /// Makes effects and music share the output instead of fighting over it.
+  ///
+  /// By default every player requests Android audio focus, so each one-shot
+  /// effect paused the music bed (and any other app's audio). Requesting no
+  /// focus lets the two channels — and other apps — mix.
+  static Future<void> _configureAudioContext() async {
+    if (_contextConfigured) return;
+    _contextConfigured = true;
+    await AudioPlayer.global.setAudioContext(
+      AudioContext(
+        android: const AudioContextAndroid(
+          usageType: AndroidUsageType.game,
+          audioFocus: AndroidAudioFocus.none,
+        ),
+        iOS: AudioContextIOS(
+          options: const {AVAudioSessionOptions.mixWithOthers},
+        ),
+      ),
+    );
+  }
+
   AudioPlayer? _musicPlayer;
   bool _musicDucked = false;
+
+  /// Music sits under the effects rather than competing with them.
+  static const double _musicVolume = 0.55;
 
   Future<void> _safe(Future<void> Function() action) async {
     try {
@@ -69,6 +96,7 @@ class AudioService {
   Future<void> play(String asset, {double volume = 1.0}) async {
     if (!soundEnabled) return;
     await _safe(() async {
+      await _configureAudioContext();
       final player = _nextPlayer();
       await player.stop();
       await player.setVolume(volume);
@@ -114,9 +142,15 @@ class AudioService {
   Future<void> startMusic() async {
     if (!musicEnabled || _musicPlayer != null) return;
     await _safe(() async {
-      final player = AudioPlayer()..setReleaseMode(ReleaseMode.loop);
-      await player.setVolume(_musicDucked ? 0.0 : 1.0);
-      await player.play(AssetSource(Sfx.music));
+      await _configureAudioContext();
+      final player = AudioPlayer();
+      await player.setReleaseMode(ReleaseMode.loop);
+      // Prepare the source once and then resume, rather than calling play()
+      // each cycle — re-preparing the asset is what makes the loop audibly
+      // stutter at the seam.
+      await player.setSource(AssetSource(Sfx.music));
+      await player.setVolume(_musicDucked ? 0.0 : _musicVolume);
+      await player.resume();
       _musicPlayer = player;
     });
   }
@@ -136,7 +170,7 @@ class AudioService {
     _musicDucked = ducked;
     final player = _musicPlayer;
     if (player == null) return;
-    await _safe(() => player.setVolume(ducked ? 0.0 : 1.0));
+    await _safe(() => player.setVolume(ducked ? 0.0 : _musicVolume));
   }
 
   Future<void> dispose() async {
