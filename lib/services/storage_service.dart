@@ -1,4 +1,5 @@
 import 'package:caesar/core/training_mode.dart';
+import 'package:caesar/features/reader/logic/reader_document.dart';
 import 'package:caesar/features/settings/state/settings_controller.dart';
 import 'package:caesar/features/stats/logic/streak_logic.dart';
 import 'package:caesar/features/vocabulary/logic/saved_word.dart';
@@ -23,6 +24,8 @@ class StorageService {
   static const _kGamesPlayed = 'stats.gamesPlayed';
   static const _kLastPlayed = 'stats.lastPlayed';
   static const _kSavedWords = 'vocabulary.savedWords';
+  static const _kLibrary = 'reader.library';
+  static const _kReaderFontSize = 'reader.fontSize';
   static const _kDeviceId = 'account.deviceId';
   static const _kDisplayName = 'account.displayName';
   static String _highscoreKey(TrainingMode mode) => 'highscore.${mode.name}';
@@ -58,6 +61,17 @@ class StorageService {
 
   Future<void> writeSavedWords(SavedWords words) =>
       _prefs.setString(_kSavedWords, words.encode());
+
+  ReaderLibrary readLibrary() =>
+      ReaderLibrary.decode(_prefs.getString(_kLibrary));
+
+  Future<void> writeLibrary(ReaderLibrary library) =>
+      _prefs.setString(_kLibrary, library.encode());
+
+  double readReaderFontSize() => _prefs.getDouble(_kReaderFontSize) ?? 19;
+
+  Future<void> writeReaderFontSize(double size) =>
+      _prefs.setDouble(_kReaderFontSize, size);
 
   PlayerStats readStats() {
     return PlayerStats(

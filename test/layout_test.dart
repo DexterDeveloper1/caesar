@@ -6,6 +6,7 @@ import 'package:caesar/features/highscores/ui/highscores_screen.dart';
 import 'package:caesar/features/home/ui/home_screen.dart';
 import 'package:caesar/features/nback/logic/nback_audio.dart';
 import 'package:caesar/features/nback/ui/nback_screen.dart';
+import 'package:caesar/features/reader/ui/library_screen.dart';
 import 'package:caesar/features/settings/ui/settings_screen.dart';
 import 'package:caesar/features/simon/ui/simon_screen.dart';
 import 'package:caesar/features/sudoku/ui/sudoku_screen.dart';
@@ -120,6 +121,11 @@ void main() {
   testWidgets('Saved words fits a small screen', (tester) async {
     await pumpAt(tester, const SavedWordsScreen());
     expectNoOverflow(tester, 'SavedWordsScreen');
+  });
+
+  testWidgets('Reading library fits a small screen', (tester) async {
+    await pumpAt(tester, const LibraryScreen());
+    expectNoOverflow(tester, 'LibraryScreen');
   });
 
   testWidgets('Math game fits with the keyboard open', (tester) async {

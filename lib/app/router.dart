@@ -3,6 +3,8 @@ import 'package:caesar/features/game/ui/game_screen.dart';
 import 'package:caesar/features/highscores/ui/highscores_screen.dart';
 import 'package:caesar/features/home/ui/home_screen.dart';
 import 'package:caesar/features/nback/ui/nback_screen.dart';
+import 'package:caesar/features/reader/ui/library_screen.dart';
+import 'package:caesar/features/reader/ui/reader_screen.dart';
 import 'package:caesar/features/settings/ui/settings_screen.dart';
 import 'package:caesar/features/simon/ui/simon_screen.dart';
 import 'package:caesar/features/splash/ui/splash_screen.dart';
@@ -22,6 +24,10 @@ class Routes {
   static const nback = '/nback';
   static const sudoku = '/sudoku';
   static const savedWords = '/words';
+  static const library = '/reading';
+
+  /// Reader route for one imported document.
+  static String reader(String id) => '/reading/${Uri.encodeComponent(id)}';
 
   /// Game route takes a `mode` path parameter (`math` or `spelling`).
   static String game(String mode) => '/game/$mode';
@@ -62,6 +68,20 @@ final caesarRouter = GoRouter(
       path: Routes.sudoku,
       name: 'sudoku',
       builder: (context, state) => const SudokuScreen(),
+    ),
+    GoRoute(
+      path: Routes.library,
+      name: 'library',
+      builder: (context, state) => const LibraryScreen(),
+      routes: [
+        GoRoute(
+          path: ':id',
+          name: 'reader',
+          builder: (context, state) => ReaderScreen(
+            documentId: Uri.decodeComponent(state.pathParameters['id'] ?? ''),
+          ),
+        ),
+      ],
     ),
     GoRoute(
       path: Routes.savedWords,

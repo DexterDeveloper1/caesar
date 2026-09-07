@@ -480,6 +480,36 @@ class _Footer extends StatelessWidget {
         ),
         const SizedBox(height: Insets.sm),
         Pressable(
+          onPressed: () => context.push(Routes.library),
+          child: GlassCard(
+            child: Row(
+              children: [
+                Icon(
+                  Icons.auto_stories_rounded,
+                  color: palette.textPrimary,
+                  size: 20,
+                ),
+                const SizedBox(width: Insets.sm),
+                Expanded(
+                  child: Text(
+                    'Reading',
+                    style: TextStyle(
+                      color: palette.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: palette.textMuted,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: Insets.sm),
+        Pressable(
           onPressed: () => context.push(Routes.savedWords),
           child: GlassCard(
             child: Row(
