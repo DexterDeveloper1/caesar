@@ -20,8 +20,8 @@ class LibraryController extends Notifier<ReaderLibrary> {
   }
 
   /// Remembers where the reader stopped, so reopening resumes in place.
-  void saveProgress(String id, int paragraph) {
-    state = state.withProgress(id, paragraph);
+  void saveProgress(String id, int paragraph, {double? offset}) {
+    state = state.withProgress(id, paragraph, offset: offset);
     _storage.writeLibrary(state);
   }
 }

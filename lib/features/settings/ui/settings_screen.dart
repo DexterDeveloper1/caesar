@@ -29,6 +29,15 @@ class SettingsScreen extends ConsumerWidget {
             value: settings.musicEnabled,
             onChanged: controller.setMusicEnabled,
           ),
+          SwitchListTile(
+            secondary: const Icon(Icons.menu_book_rounded),
+            title: const Text('Music while reading'),
+            subtitle: const Text(
+              'Keep the background music playing in the reader',
+            ),
+            value: settings.musicWhileReading,
+            onChanged: controller.setMusicWhileReading,
+          ),
           const Divider(height: 0),
           ListTile(
             title: const Text('Appearance'),

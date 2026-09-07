@@ -23,8 +23,10 @@ class LibraryScreen extends ConsumerStatefulWidget {
 class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   bool _importing = false;
 
+  /// What the import is currently doing, so the wait is never unexplained.
+  String _stage = '';
+
   Future<void> _import() async {
-    setState(() => _importing = true);
     try {
       final picked = await FilePicker.pickFile(
         type: FileType.custom,
@@ -32,6 +34,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       );
       final path = picked?.path;
       if (path == null) return;
+
+      // Only now is there work to report — showing a spinner while the system
+      // file dialog is open would be meaningless.
+      if (!mounted) return;
+      setState(() {
+        _importing = true;
+        _stage = 'Reading ${picked!.name}…';
+      });
 
       final document = await ref
           .read(documentImporterProvider)
@@ -74,11 +84,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
           child: Column(
             children: [
               _TopBar(onImport: _importing ? null : _import),
-              if (_importing)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: Insets.sm),
-                  child: LinearProgressIndicator(minHeight: 2),
-                ),
+              if (_importing) _ImportBanner(stage: _stage),
               Expanded(
                 child: library.documents.isEmpty
                     ? _EmptyState(onImport: _importing ? null : _import)
@@ -114,6 +120,59 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Explains the wait during an import.
+///
+/// Extraction of a large PDF takes seconds; without this the screen looked
+/// frozen and Android offered to close the app.
+class _ImportBanner extends StatelessWidget {
+  final String stage;
+
+  const _ImportBanner({required this.stage});
+
+  @override
+  Widget build(BuildContext context) {
+    final palette = AppPalette.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(Insets.md, 0, Insets.md, Insets.sm),
+      child: GlassCard(
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: Insets.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    stage.isEmpty ? 'Importing…' : stage,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: palette.textPrimary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Extracting and cleaning the text. Large books take a '
+                    'few seconds.',
+                    style: TextStyle(color: palette.textMuted, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -19,6 +19,7 @@ class StorageService {
   static const _kMusic = 'settings.musicEnabled';
   static const _kThemeMode = 'settings.themeMode';
   static const _kStartDifficulty = 'settings.startDifficulty';
+  static const _kMusicWhileReading = 'settings.musicWhileReading';
   static const _kStreak = 'stats.currentStreak';
   static const _kBestStreak = 'stats.bestStreak';
   static const _kGamesPlayed = 'stats.gamesPlayed';
@@ -37,6 +38,7 @@ class StorageService {
       themeMode: ThemeMode
           .values[_prefs.getInt(_kThemeMode) ?? ThemeMode.system.index],
       startDifficulty: _prefs.getInt(_kStartDifficulty) ?? 1,
+      musicWhileReading: _prefs.getBool(_kMusicWhileReading) ?? false,
     );
   }
 
@@ -45,6 +47,7 @@ class StorageService {
     await _prefs.setBool(_kMusic, settings.musicEnabled);
     await _prefs.setInt(_kThemeMode, settings.themeMode.index);
     await _prefs.setInt(_kStartDifficulty, settings.startDifficulty);
+    await _prefs.setBool(_kMusicWhileReading, settings.musicWhileReading);
   }
 
   String? readDeviceId() => _prefs.getString(_kDeviceId);

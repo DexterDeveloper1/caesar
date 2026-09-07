@@ -17,12 +17,24 @@ class ReaderDocument {
   /// Index of the first paragraph not yet read.
   final int progressParagraph;
 
+  /// Indices of paragraphs that are headings, so the reader can style them.
+  final Set<int> headingIndices;
+
+  /// Exact scroll position when reading stopped.
+  ///
+  /// Paragraph index alone cannot restore the view: in a lazily-built list an
+  /// off-screen paragraph has no context to scroll to, which is why resuming
+  /// silently fell back to the top.
+  final double scrollOffset;
+
   const ReaderDocument({
     required this.id,
     required this.title,
     required this.paragraphs,
     required this.addedAt,
     this.progressParagraph = 0,
+    this.headingIndices = const {},
+    this.scrollOffset = 0,
   });
 
   bool get isEmpty => paragraphs.isEmpty;
@@ -34,13 +46,18 @@ class ReaderDocument {
   bool get isFinished =>
       paragraphs.isNotEmpty && progressParagraph >= paragraphs.length;
 
-  ReaderDocument copyWith({int? progressParagraph}) => ReaderDocument(
-    id: id,
-    title: title,
-    paragraphs: paragraphs,
-    addedAt: addedAt,
-    progressParagraph: progressParagraph ?? this.progressParagraph,
-  );
+  bool isHeading(int index) => headingIndices.contains(index);
+
+  ReaderDocument copyWith({int? progressParagraph, double? scrollOffset}) =>
+      ReaderDocument(
+        id: id,
+        title: title,
+        paragraphs: paragraphs,
+        addedAt: addedAt,
+        progressParagraph: progressParagraph ?? this.progressParagraph,
+        headingIndices: headingIndices,
+        scrollOffset: scrollOffset ?? this.scrollOffset,
+      );
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -48,6 +65,8 @@ class ReaderDocument {
     'paragraphs': paragraphs,
     'addedAt': addedAt.toIso8601String(),
     'progress': progressParagraph,
+    'headings': headingIndices.toList(),
+    'offset': scrollOffset,
   };
 
   static ReaderDocument? fromJson(Object? json) {
@@ -62,6 +81,8 @@ class ReaderDocument {
         ? raw.whereType<String>().toList(growable: false)
         : const <String>[];
     final progress = json['progress'];
+    final headings = json['headings'];
+    final offset = json['offset'];
 
     return ReaderDocument(
       id: id,
@@ -69,6 +90,10 @@ class ReaderDocument {
       paragraphs: paragraphs,
       addedAt: addedAt,
       progressParagraph: progress is int ? progress : 0,
+      headingIndices: headings is List
+          ? headings.whereType<int>().toSet()
+          : const {},
+      scrollOffset: offset is num ? offset.toDouble() : 0,
     );
   }
 }
@@ -100,10 +125,14 @@ class ReaderLibrary {
   ReaderLibrary remove(String id) =>
       ReaderLibrary(documents.where((d) => d.id != id).toList());
 
-  ReaderLibrary withProgress(String id, int paragraph) => ReaderLibrary([
-    for (final doc in documents)
-      if (doc.id == id) doc.copyWith(progressParagraph: paragraph) else doc,
-  ]);
+  ReaderLibrary withProgress(String id, int paragraph, {double? offset}) =>
+      ReaderLibrary([
+        for (final doc in documents)
+          if (doc.id == id)
+            doc.copyWith(progressParagraph: paragraph, scrollOffset: offset)
+          else
+            doc,
+      ]);
 
   String encode() => jsonEncode(documents.map((d) => d.toJson()).toList());
 

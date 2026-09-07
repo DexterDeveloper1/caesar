@@ -124,4 +124,48 @@ void main() {
       expect(estimateReadingMinutes(['a few words']), greaterThanOrEqualTo(1));
     });
   });
+
+  group('Headings', () {
+    test('an all-caps line is a heading, not part of the next sentence', () {
+      // Real case from Angels & Demons: "ACKNOWLEDGMENTS" ran straight into
+      // "A debt of gratitude..." as one sentence.
+      final blocks = cleanDocumentBlocks([
+        'ACKNOWLEDGMENTS\nA debt of gratitude to my friends and editors.',
+      ]);
+      expect(blocks.first.isHeading, isTrue);
+      expect(blocks.first.text, 'ACKNOWLEDGMENTS');
+      expect(blocks[1].isHeading, isFalse);
+      expect(blocks[1].text, startsWith('A debt of gratitude'));
+    });
+
+    test('chapter markers are headings', () {
+      for (final line in ['CHAPTER 1', 'Chapter 12', 'PROLOGUE', 'Part Two']) {
+        final blocks = cleanDocumentBlocks([
+          '$line\nThe story continues here.',
+        ]);
+        expect(blocks.first.isHeading, isTrue, reason: line);
+        expect(blocks.first.text, line);
+      }
+    });
+
+    test('a long all-caps passage is not treated as a heading', () {
+      const shouting =
+          'THIS IS A VERY LONG LINE OF SHOUTING THAT GOES ON AND ON AND IS '
+          'CLEARLY NOT A HEADING BECAUSE IT IS FAR TOO LONG TO BE ONE AT ALL.';
+      final blocks = cleanDocumentBlocks([shouting]);
+      expect(blocks.single.isHeading, isFalse);
+    });
+
+    test('ordinary prose is never a heading', () {
+      final blocks = cleanDocumentBlocks([
+        'The camerlegno walked slowly down the corridor of the basilica.',
+      ]);
+      expect(blocks.single.isHeading, isFalse);
+    });
+
+    test('plain cleanDocument still returns text only', () {
+      final text = cleanDocument(['ACKNOWLEDGMENTS\nA debt of gratitude.']);
+      expect(text, ['ACKNOWLEDGMENTS', 'A debt of gratitude.']);
+    });
+  });
 }

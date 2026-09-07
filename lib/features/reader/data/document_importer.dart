@@ -45,9 +45,13 @@ class DocumentImporter {
 
     final List<String> rawPages;
     try {
+      // Extraction is CPU-bound and can take many seconds on a large PDF.
+      // Running it on the UI isolate froze the app hard enough for Android to
+      // offer the "close or wait" dialog, so it goes to a worker isolate.
+      final bytes = extension == 'txt' ? null : await file.readAsBytes();
       rawPages = switch (extension) {
-        'pdf' => await _extractPdf(file),
-        'epub' => await _extractEpub(file),
+        'pdf' => await compute(_extractPdfBytes, bytes!),
+        'epub' => await compute(_extractEpubBytes, bytes!),
         _ => [await file.readAsString()],
       };
     } on ImportException {
@@ -63,23 +67,27 @@ class DocumentImporter {
       throw const ImportException(ImportFailure.noTextLayer);
     }
 
-    final paragraphs = cleanDocument(rawPages);
-    if (paragraphs.isEmpty) {
+    final blocks = cleanDocumentBlocks(rawPages);
+    if (blocks.isEmpty) {
       throw const ImportException(ImportFailure.noTextLayer);
     }
 
     return ReaderDocument(
       id: '${file.path}:${await file.length()}',
       title: _titleFrom(name),
-      paragraphs: paragraphs,
+      paragraphs: [for (final block in blocks) block.text],
       addedAt: DateTime.now(),
+      headingIndices: {
+        for (var i = 0; i < blocks.length; i++)
+          if (blocks[i].isHeading) i,
+      },
     );
   }
 
   /// Extracts text page by page, so the cleaner can spot per-page artifacts
   /// like running headers.
-  Future<List<String>> _extractPdf(File file) async {
-    final document = pdf.PdfDocument(inputBytes: await file.readAsBytes());
+  static Future<List<String>> _extractPdf(Uint8List bytes) async {
+    final document = pdf.PdfDocument(inputBytes: bytes);
     try {
       final extractor = pdf.PdfTextExtractor(document);
       return [
@@ -93,8 +101,8 @@ class DocumentImporter {
 
   /// EPUB is structured HTML, so extraction is far more reliable than PDF —
   /// each chapter becomes a "page" for the cleaner.
-  Future<List<String>> _extractEpub(File file) async {
-    final book = await epub.EpubReader.readBook(await file.readAsBytes());
+  static Future<List<String>> _extractEpub(Uint8List bytes) async {
+    final book = await epub.EpubReader.readBook(bytes);
     final chapters = <String>[];
 
     void walk(List<epub.EpubChapter>? list) {
@@ -120,7 +128,7 @@ class DocumentImporter {
 
   /// Converts chapter HTML to plain text, keeping block boundaries as the
   /// blank lines the cleaner reads as paragraph breaks.
-  String _stripHtml(String html) {
+  static String _stripHtml(String html) {
     var text = html
         .replaceAll(RegExp(r'<(script|style)[^>]*>.*?</\1>', dotAll: true), ' ')
         .replaceAllMapped(
@@ -157,6 +165,13 @@ class DocumentImporter {
     return spaced.isEmpty ? 'Untitled' : spaced;
   }
 }
+
+/// Isolate entry points — `compute` needs top-level functions.
+Future<List<String>> _extractPdfBytes(Uint8List bytes) =>
+    DocumentImporter._extractPdf(bytes);
+
+Future<List<String>> _extractEpubBytes(Uint8List bytes) =>
+    DocumentImporter._extractEpub(bytes);
 
 final documentImporterProvider = Provider<DocumentImporter>(
   (ref) => const DocumentImporter(),

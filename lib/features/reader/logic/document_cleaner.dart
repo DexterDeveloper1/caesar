@@ -17,6 +17,62 @@ const double _repeatThreshold = 0.6;
 /// How many lines at each end of a page are candidates for header/footer.
 const int _edgeLines = 2;
 
+/// A paragraph of the cleaned document, tagged so headings can be styled.
+class DocumentBlock {
+  final String text;
+  final bool isHeading;
+
+  const DocumentBlock(this.text, {this.isHeading = false});
+}
+
+/// Longest a line can be and still plausibly be a heading.
+const int _maxHeadingLength = 60;
+
+/// Whether a line looks like a heading rather than prose.
+///
+/// Extraction gives no styling information, so headings have to be inferred.
+/// Without this, "ACKNOWLEDGMENTS" is joined onto the sentence that follows it
+/// and the book reads as one run-on block.
+bool looksLikeHeading(String line) {
+  final trimmed = line.trim();
+  if (trimmed.isEmpty || trimmed.length > _maxHeadingLength) return false;
+  // Prose ends in punctuation; headings almost never do.
+  if (RegExp(r'[.,;:]$').hasMatch(trimmed)) return false;
+
+  // Standalone front/back-matter headings.
+  if (RegExp(
+    r'^(prologue|epilogue|preface|foreword|introduction|contents|afterword|'
+    r'acknowledge?ments?|appendix|dedication|epigraph)[.:]?$',
+    caseSensitive: false,
+  ).hasMatch(trimmed)) {
+    return true;
+  }
+
+  // "Chapter 12", "Part Two", "Book IV" — the number may be digits, roman
+  // numerals, or spelled out.
+  if (RegExp(
+    r'^(chapter|part|book|section)\s*'
+    r'(\d+|[ivxlcdm]+|one|two|three|four|five|six|seven|eight|nine|ten|'
+    r'eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|'
+    r'nineteen|twenty)?[.:]?$',
+    caseSensitive: false,
+  ).hasMatch(trimmed)) {
+    return true;
+  }
+
+  // A short line in capitals, e.g. "ACKNOWLEDGMENTS".
+  final letters = trimmed.replaceAll(RegExp(r'[^A-Za-z]'), '');
+  if (letters.length >= 3 && letters == letters.toUpperCase()) return true;
+
+  return false;
+}
+
+/// Cleans per-page raw text into paragraphs, tagging headings.
+List<DocumentBlock> cleanDocumentBlocks(List<String> pages) => [
+  for (final text in cleanDocument(pages))
+    DocumentBlock(text, isHeading: looksLikeHeading(text)),
+];
+
 /// Cleans per-page raw text into reflowable paragraphs.
 List<String> cleanDocument(List<String> pages) {
   if (pages.isEmpty) return const [];
@@ -136,6 +192,17 @@ List<String> _pageToParagraphs(String page) {
         // Saxon" is hyphenated, not a split word.
         final joinsWord = next.isNotEmpty && next[0] == next[0].toLowerCase();
         buffer.write(joinsWord ? line.substring(0, line.length - 1) : line);
+        continue;
+      }
+
+      // A heading stands alone, so flush it as its own paragraph rather
+      // than letting the sentence that follows run onto it.
+      if (looksLikeHeading(line)) {
+        if (buffer.isNotEmpty) {
+          paragraphs.add(_normalise(buffer.toString()));
+          buffer.clear();
+        }
+        paragraphs.add(_normalise(line));
         continue;
       }
 

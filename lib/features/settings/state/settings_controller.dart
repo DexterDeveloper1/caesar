@@ -11,11 +11,15 @@ class Settings {
   final ThemeMode themeMode;
   final int startDifficulty;
 
+  /// Whether the music bed keeps playing while reading.
+  final bool musicWhileReading;
+
   const Settings({
     this.soundEnabled = true,
     this.musicEnabled = true,
     this.themeMode = ThemeMode.system,
     this.startDifficulty = 1,
+    this.musicWhileReading = false,
   });
 
   Settings copyWith({
@@ -23,12 +27,14 @@ class Settings {
     bool? musicEnabled,
     ThemeMode? themeMode,
     int? startDifficulty,
+    bool? musicWhileReading,
   }) {
     return Settings(
       soundEnabled: soundEnabled ?? this.soundEnabled,
       musicEnabled: musicEnabled ?? this.musicEnabled,
       themeMode: themeMode ?? this.themeMode,
       startDifficulty: startDifficulty ?? this.startDifficulty,
+      musicWhileReading: musicWhileReading ?? this.musicWhileReading,
     );
   }
 }
@@ -47,6 +53,9 @@ class SettingsController extends Notifier<Settings> {
       _update(state.copyWith(musicEnabled: value));
 
   void setThemeMode(ThemeMode mode) => _update(state.copyWith(themeMode: mode));
+
+  void setMusicWhileReading(bool value) =>
+      _update(state.copyWith(musicWhileReading: value));
 
   void setStartDifficulty(int difficulty) =>
       _update(state.copyWith(startDifficulty: difficulty));

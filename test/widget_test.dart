@@ -192,6 +192,18 @@ void main() {
   });
 
   group('GameController', () {
+    test('starting a spelling round does not throw', () async {
+      // Regression: build() cleared the word-session provider inline, and
+      // Riverpod forbids a provider modifying another during initialization.
+      final container = await _container();
+      expect(
+        () => container.read(gameControllerProvider(GameType.spelling)),
+        returnsNormally,
+      );
+      final state = container.read(gameControllerProvider(GameType.spelling));
+      expect(state.status, GameStatus.playing);
+    });
+
     test('starts in a fresh playing state', () async {
       final container = await _container();
       final state = container.read(gameControllerProvider(GameType.math));

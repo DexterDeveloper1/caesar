@@ -43,17 +43,18 @@ class GameController extends Notifier<GameState> {
         .read(settingsControllerProvider)
         .startDifficulty;
     _progression = Progression(level: startDifficulty);
-    if (_mode == GameType.spelling) {
-      ref.read(wordSessionProvider.notifier).clear();
-    }
     final initial = _nextRound(
       score: 0,
       strikes: 0,
       difficulty: _progression.level,
     );
-    // The notifier's state is not assignable until build() returns, so kick the
-    // round off once it has.
-    scheduleMicrotask(_beginRound);
+    // Riverpod forbids a provider touching another during initialization, and
+    // the notifier's own state is not assignable until build() returns — so
+    // both the session reset and the first round wait for the microtask.
+    scheduleMicrotask(() {
+      _clearWordSession();
+      _beginRound();
+    });
     return initial;
   }
 
@@ -132,6 +133,11 @@ class GameController extends Notifier<GameState> {
     }
   }
 
+  void _clearWordSession() {
+    if (_mode != GameType.spelling) return;
+    ref.read(wordSessionProvider.notifier).clear();
+  }
+
   /// Records the word just attempted so the results screen can offer it.
   /// Deliberately silent: the round is timed, so nothing may interrupt it.
   void _captureWord({required bool correct}) {
@@ -168,9 +174,7 @@ class GameController extends Notifier<GameState> {
         .read(settingsControllerProvider)
         .startDifficulty;
     _progression = Progression(level: startDifficulty);
-    if (_mode == GameType.spelling) {
-      ref.read(wordSessionProvider.notifier).clear();
-    }
+    _clearWordSession();
     state = _nextRound(score: 0, strikes: 0, difficulty: _progression.level);
     _beginRound();
   }
