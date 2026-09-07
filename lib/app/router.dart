@@ -6,6 +6,8 @@ import 'package:caesar/features/nback/ui/nback_screen.dart';
 import 'package:caesar/features/settings/ui/settings_screen.dart';
 import 'package:caesar/features/simon/ui/simon_screen.dart';
 import 'package:caesar/features/splash/ui/splash_screen.dart';
+import 'package:caesar/features/sudoku/ui/sudoku_screen.dart';
+import 'package:caesar/features/vocabulary/ui/saved_words_screen.dart';
 import 'package:go_router/go_router.dart';
 
 /// Central route table for the app.
@@ -18,6 +20,8 @@ class Routes {
   static const highscores = '/highscores';
   static const simon = '/simon';
   static const nback = '/nback';
+  static const sudoku = '/sudoku';
+  static const savedWords = '/words';
 
   /// Game route takes a `mode` path parameter (`math` or `spelling`).
   static String game(String mode) => '/game/$mode';
@@ -53,6 +57,16 @@ final caesarRouter = GoRouter(
       path: Routes.nback,
       name: 'nback',
       builder: (context, state) => const NBackScreen(),
+    ),
+    GoRoute(
+      path: Routes.sudoku,
+      name: 'sudoku',
+      builder: (context, state) => const SudokuScreen(),
+    ),
+    GoRoute(
+      path: Routes.savedWords,
+      name: 'savedWords',
+      builder: (context, state) => const SavedWordsScreen(),
     ),
     GoRoute(
       path: Routes.highscores,

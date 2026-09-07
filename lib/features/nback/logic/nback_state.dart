@@ -89,8 +89,17 @@ class NBackState {
   bool get isFinished => status == NBackStatus.finished;
   bool get isRunning => status == NBackStatus.running;
 
-  /// Combined score across both channels.
-  int get score => position.score + audio.score;
+  /// Proportion of all decisions that were correct.
+  double get accuracy => sessionAccuracy(
+    hits: position.hits + audio.hits,
+    misses: position.misses + audio.misses,
+    falseAlarms: position.falseAlarms + audio.falseAlarms,
+    correctRejections: position.correctRejections + audio.correctRejections,
+  );
+
+  /// Headline score — rises with both accuracy and the memory load, so there
+  /// is always a harder target to chase.
+  int get score => sessionScore(n: n, accuracy: accuracy);
 
   /// 1-based trial number for display (clamped to [totalTrials]).
   int get trialNumber =>

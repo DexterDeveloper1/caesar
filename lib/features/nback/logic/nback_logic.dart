@@ -23,8 +23,11 @@ int channelScore({required int hits, required int falseAlarms}) =>
     math.max(0, hits - falseAlarms);
 
 /// Bounds on the working-memory load.
+///
+/// The ceiling is deliberately far above what most people reach — established
+/// trainers go to 9 and beyond — so the task never runs out of challenge.
 const int minN = 1;
-const int maxN = 5;
+const int maxN = 9;
 
 /// Targets planted per channel in a session, and how many coincide on the same
 /// trial.
@@ -96,6 +99,15 @@ List<int> buildSequence({
   }
   return seq;
 }
+
+/// The headline score for a session.
+///
+/// It multiplies accuracy by the memory load, so a flawless run at N=2 (200)
+/// ranks below a strong run at N=4 (~360). Scoring only hits would cap the
+/// game: a perfect session is always the same number of hits no matter how
+/// hard it was, leaving nothing to chase. Here the ceiling rises with N.
+int sessionScore({required int n, required double accuracy}) =>
+    (n * accuracy * 100).round();
 
 /// Accuracy over a session: correct decisions ÷ total decisions.
 double sessionAccuracy({

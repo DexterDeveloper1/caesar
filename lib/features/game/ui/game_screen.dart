@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:caesar/core/constants.dart';
 import 'package:caesar/core/design.dart';
 import 'package:caesar/core/training_mode.dart';
+import 'package:caesar/core/widgets/game_keyboard.dart';
 import 'package:caesar/core/widgets/juice.dart';
 import 'package:caesar/core/widgets/quit_guard.dart';
 import 'package:caesar/features/game/logic/game_controller.dart';
 import 'package:caesar/features/game/logic/game_type.dart';
 import 'package:caesar/features/game/ui/results_view.dart';
+import 'package:caesar/features/vocabulary/ui/session_words_card.dart';
 import 'package:caesar/services/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -22,7 +24,9 @@ class GameScreen extends ConsumerStatefulWidget {
 }
 
 class _GameScreenState extends ConsumerState<GameScreen> {
-  final TextEditingController _controller = TextEditingController();
+  /// The answer typed so far. Held here rather than in a TextField so no
+  /// system keyboard is ever summoned.
+  String _input = '';
 
   /// Drives the brief green/red wash over the question card.
   Color? _flash;
@@ -34,7 +38,6 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   @override
   void dispose() {
     _flashTimer?.cancel();
-    _controller.dispose();
     super.dispose();
   }
 
@@ -47,16 +50,26 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   }
 
   void _submit() {
-    if (_controller.text.trim().isEmpty) return;
-    ref
-        .read(gameControllerProvider(widget.mode).notifier)
-        .submit(_controller.text);
-    _controller.clear();
+    if (_input.trim().isEmpty) return;
+    ref.read(gameControllerProvider(widget.mode).notifier).submit(_input);
+    setState(() => _input = '');
   }
 
   void _restart() {
     ref.read(gameControllerProvider(widget.mode).notifier).restart();
-    _controller.clear();
+    setState(() => _input = '');
+  }
+
+  void _type(String character) {
+    if (ref.read(gameControllerProvider(widget.mode)).revealing) return;
+    // Long enough for the longest word in the bank, with room to spare.
+    if (_input.length >= 14) return;
+    setState(() => _input += character);
+  }
+
+  void _backspace() {
+    if (_input.isEmpty) return;
+    setState(() => _input = _input.substring(0, _input.length - 1));
   }
 
   @override
@@ -73,6 +86,9 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         audio.wrong();
         _showFlash(const Color(0xFFEF4444));
       }
+      if (next.prompt != previous.prompt && _input.isNotEmpty) {
+        setState(() => _input = '');
+      }
     });
 
     final state = ref.watch(gameControllerProvider(widget.mode));
@@ -86,6 +102,10 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         score: state.score,
         scoreLabel: 'Final score',
         onRestart: _restart,
+        // Spelling collects the words you saw so you can keep any to learn.
+        details: widget.mode == GameType.spelling
+            ? const SessionWordsCard()
+            : null,
       );
     }
 
@@ -205,64 +225,50 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                   ),
                   const SizedBox(height: Insets.lg),
 
-                  TextField(
-                    controller: _controller,
-                    autofocus: true,
-                    // No typing while the word is still on screen.
-                    enabled: !state.revealing,
-                    textAlign: TextAlign.center,
-                    keyboardType: widget.mode == GameType.math
-                        ? TextInputType.number
-                        : TextInputType.text,
-                    style: TextStyle(
-                      color: palette.textPrimary,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
+                  // Our own answer box: the typed text is state, not a
+                  // TextField, so the system keyboard never opens.
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: Insets.md,
+                      horizontal: Insets.md,
                     ),
-                    decoration: InputDecoration(
-                      hintText: 'Your answer',
-                      hintStyle: TextStyle(color: palette.textMuted),
-                      filled: true,
-                      fillColor: palette.surface,
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: Radii.card,
-                        borderSide: BorderSide(color: palette.surfaceBorder),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: Radii.card,
-                        borderSide: BorderSide(color: style.accent, width: 2),
+                    decoration: BoxDecoration(
+                      color: palette.surface,
+                      borderRadius: Radii.card,
+                      border: Border.all(
+                        color: _input.isEmpty
+                            ? palette.surfaceBorder
+                            : style.accent,
+                        width: _input.isEmpty ? 1 : 2,
                       ),
                     ),
-                    onSubmitted: (_) => _submit(),
+                    child: Text(
+                      _input.isEmpty ? 'Your answer' : _input,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: _input.isEmpty
+                            ? palette.textMuted
+                            : palette.textPrimary,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: Insets.md),
-                  Pressable(
-                    onPressed: state.revealing ? null : _submit,
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: Insets.md),
-                      decoration: BoxDecoration(
-                        gradient: style.gradient,
-                        borderRadius: Radii.card,
-                        boxShadow: [
-                          BoxShadow(
-                            color: style.end.withValues(alpha: 0.4),
-                            blurRadius: 16,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: const Center(
-                        child: Text(
-                          'Submit',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 17,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ),
+                  // Always-present keyboard: no show/hide animation eating the
+                  // clock, and no autocorrect to leak the answer.
+                  GameKeyboard(
+                    layout: widget.mode == GameType.math
+                        ? KeyboardLayout.digits
+                        : KeyboardLayout.letters,
+                    accent: style.accent,
+                    onKey: _type,
+                    onBackspace: _backspace,
+                    onSubmit: _submit,
                   ),
                   const SizedBox(height: Insets.xl),
                 ],

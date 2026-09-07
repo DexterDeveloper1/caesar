@@ -134,14 +134,7 @@ class NBackController extends Notifier<NBackState> {
 
       // Move the difficulty toward the edge of the player's ability so the
       // next session keeps training rather than drilling.
-      final accuracy = sessionAccuracy(
-        hits: state.position.hits + state.audio.hits,
-        misses: state.position.misses + state.audio.misses,
-        falseAlarms: state.position.falseAlarms + state.audio.falseAlarms,
-        correctRejections:
-            state.position.correctRejections + state.audio.correctRejections,
-      );
-      _n = nextN(_n, accuracy);
+      _n = nextN(_n, state.accuracy);
     } else {
       state = scored.copyWith(trialIndex: nextIndex);
       _timer = Timer(gap, () => _startTrial(generation));

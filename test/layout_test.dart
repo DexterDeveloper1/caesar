@@ -8,6 +8,8 @@ import 'package:caesar/features/nback/logic/nback_audio.dart';
 import 'package:caesar/features/nback/ui/nback_screen.dart';
 import 'package:caesar/features/settings/ui/settings_screen.dart';
 import 'package:caesar/features/simon/ui/simon_screen.dart';
+import 'package:caesar/features/sudoku/ui/sudoku_screen.dart';
+import 'package:caesar/features/vocabulary/ui/saved_words_screen.dart';
 import 'package:caesar/services/storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -107,6 +109,17 @@ void main() {
   testWidgets('Settings fits a small screen', (tester) async {
     await pumpAt(tester, const SettingsScreen());
     expectNoOverflow(tester, 'SettingsScreen');
+  });
+
+  testWidgets('Sudoku fits a small screen', (tester) async {
+    await pumpAt(tester, const SudokuScreen());
+    await tester.pump(const Duration(milliseconds: 300));
+    expectNoOverflow(tester, 'SudokuScreen');
+  });
+
+  testWidgets('Saved words fits a small screen', (tester) async {
+    await pumpAt(tester, const SavedWordsScreen());
+    expectNoOverflow(tester, 'SavedWordsScreen');
   });
 
   testWidgets('Math game fits with the keyboard open', (tester) async {

@@ -78,6 +78,11 @@ const Map<TrainingMode, ModeStyle> modeStyles = {
     end: Color(0xFFBE185D),
     icon: Icons.memory_rounded,
   ),
+  TrainingMode.sudoku: ModeStyle(
+    start: Color(0xFF34D399),
+    end: Color(0xFF047857),
+    icon: Icons.grid_on_rounded,
+  ),
 };
 
 ModeStyle styleOf(TrainingMode mode) => modeStyles[mode]!;

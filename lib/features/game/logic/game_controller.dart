@@ -5,6 +5,7 @@ import 'package:caesar/core/training_mode.dart';
 import 'package:caesar/features/highscores/state/highscores_controller.dart';
 import 'package:caesar/features/settings/state/settings_controller.dart';
 import 'package:caesar/features/stats/state/stats_controller.dart';
+import 'package:caesar/features/vocabulary/state/vocabulary_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'game_state.dart';
@@ -42,6 +43,9 @@ class GameController extends Notifier<GameState> {
         .read(settingsControllerProvider)
         .startDifficulty;
     _progression = Progression(level: startDifficulty);
+    if (_mode == GameType.spelling) {
+      ref.read(wordSessionProvider.notifier).clear();
+    }
     final initial = _nextRound(
       score: 0,
       strikes: 0,
@@ -102,6 +106,7 @@ class GameController extends Notifier<GameState> {
       if (state.isGameOver) return;
       final remaining = state.timeLeft - 1;
       if (remaining <= 0) {
+        _captureWord(correct: false);
         _registerFailure();
       } else {
         state = state.copyWith(timeLeft: remaining);
@@ -113,6 +118,7 @@ class GameController extends Notifier<GameState> {
   void submit(String input) {
     if (state.isGameOver || state.revealing) return;
     final correct = input.trim().toLowerCase() == _answer.toLowerCase();
+    _captureWord(correct: correct);
     if (correct) {
       _progression = applyAnswer(_progression, correct: true);
       state = _nextRound(
@@ -124,6 +130,13 @@ class GameController extends Notifier<GameState> {
     } else {
       _registerFailure();
     }
+  }
+
+  /// Records the word just attempted so the results screen can offer it.
+  /// Deliberately silent: the round is timed, so nothing may interrupt it.
+  void _captureWord({required bool correct}) {
+    if (_mode != GameType.spelling) return;
+    ref.read(wordSessionProvider.notifier).record(_answer, correct: correct);
   }
 
   void _registerFailure() {
@@ -155,6 +168,9 @@ class GameController extends Notifier<GameState> {
         .read(settingsControllerProvider)
         .startDifficulty;
     _progression = Progression(level: startDifficulty);
+    if (_mode == GameType.spelling) {
+      ref.read(wordSessionProvider.notifier).clear();
+    }
     state = _nextRound(score: 0, strikes: 0, difficulty: _progression.level);
     _beginRound();
   }

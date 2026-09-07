@@ -22,6 +22,12 @@ class ResultsView extends ConsumerWidget {
   /// Extra per-mode detail rendered under the score (e.g. N-Back channels).
   final Widget? details;
 
+  /// Optional one-line note under the score, e.g. what happens next session.
+  final String? footnote;
+
+  /// Label for the primary action. Defaults to 'Play again'.
+  final String restartLabel;
+
   const ResultsView({
     super.key,
     required this.title,
@@ -30,6 +36,8 @@ class ResultsView extends ConsumerWidget {
     required this.scoreLabel,
     required this.onRestart,
     this.details,
+    this.footnote,
+    this.restartLabel = 'Play again',
   });
 
   @override
@@ -101,6 +109,18 @@ class ResultsView extends ConsumerWidget {
                           height: 1,
                         ),
                       ),
+                      if (footnote != null) ...[
+                        const SizedBox(height: Insets.sm),
+                        Text(
+                          footnote!,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: style.accent,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: Insets.lg),
                       GlassCard(
                         child: Row(
@@ -140,10 +160,10 @@ class ResultsView extends ConsumerWidget {
                             gradient: style.gradient,
                             borderRadius: Radii.card,
                           ),
-                          child: const Center(
+                          child: Center(
                             child: Text(
-                              'Play again',
-                              style: TextStyle(
+                              restartLabel,
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 17,
                                 fontWeight: FontWeight.w800,

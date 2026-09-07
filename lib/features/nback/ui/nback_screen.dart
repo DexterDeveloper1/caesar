@@ -4,6 +4,7 @@ import 'package:caesar/core/widgets/juice.dart';
 import 'package:caesar/core/widgets/quit_guard.dart';
 import 'package:caesar/features/game/ui/results_view.dart';
 import 'package:caesar/features/nback/logic/nback_controller.dart';
+import 'package:caesar/features/nback/logic/nback_logic.dart';
 import 'package:caesar/features/nback/logic/nback_state.dart';
 import 'package:caesar/services/audio_service.dart';
 import 'package:flutter/material.dart';
@@ -48,12 +49,27 @@ class _NBackScreenState extends ConsumerState<NBackScreen> {
     final style = styleOf(TrainingMode.nback);
 
     if (state.isFinished) {
+      final nextLevel = nextN(state.n, state.accuracy);
       return ResultsView(
         title: 'Session complete',
         mode: TrainingMode.nback,
         score: state.score,
-        scoreLabel: 'Total score',
+        // Make the two things that drive the score explicit, so it is obvious
+        // that a harder level is worth more than a flawless easy one.
+        scoreLabel:
+            'N = ${state.n}  ·  ${(state.accuracy * 100).round()}% accurate',
         onRestart: controller.restart,
+        // The primary action continues the progression, so say so on the
+        // button rather than calling it a replay.
+        restartLabel: nextLevel > state.n
+            ? 'Continue at N = $nextLevel'
+            : 'Play again at N = $nextLevel',
+        footnote: nextLevel > state.n
+            ? 'Level up! You beat 80% — the next session steps up to N = '
+                  '$nextLevel.'
+            : nextLevel < state.n
+            ? 'Below 50% — the next session eases back to N = $nextLevel.'
+            : 'Hold at N = $nextLevel. Reach 80% to level up.',
         details: Row(
           children: [
             Expanded(
@@ -342,6 +358,13 @@ class _ChannelCard extends StatelessWidget {
             label: 'False alarms',
             value: stats.falseAlarms,
             tint: const Color(0xFFFB7185),
+          ),
+          // Shown so the four numbers add up to the trials played — without it
+          // the score looks disconnected from anything on screen.
+          _StatLine(
+            label: 'Correctly ignored',
+            value: stats.correctRejections,
+            tint: palette.textMuted,
           ),
         ],
       ),

@@ -1,6 +1,7 @@
 import 'package:caesar/core/training_mode.dart';
 import 'package:caesar/features/settings/state/settings_controller.dart';
 import 'package:caesar/features/stats/logic/streak_logic.dart';
+import 'package:caesar/features/vocabulary/logic/saved_word.dart';
 import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -21,6 +22,7 @@ class StorageService {
   static const _kBestStreak = 'stats.bestStreak';
   static const _kGamesPlayed = 'stats.gamesPlayed';
   static const _kLastPlayed = 'stats.lastPlayed';
+  static const _kSavedWords = 'vocabulary.savedWords';
   static const _kDeviceId = 'account.deviceId';
   static const _kDisplayName = 'account.displayName';
   static String _highscoreKey(TrainingMode mode) => 'highscore.${mode.name}';
@@ -50,6 +52,12 @@ class StorageService {
 
   Future<void> writeDisplayName(String name) =>
       _prefs.setString(_kDisplayName, name);
+
+  SavedWords readSavedWords() =>
+      SavedWords.decode(_prefs.getString(_kSavedWords)).pruned();
+
+  Future<void> writeSavedWords(SavedWords words) =>
+      _prefs.setString(_kSavedWords, words.encode());
 
   PlayerStats readStats() {
     return PlayerStats(

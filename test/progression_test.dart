@@ -176,4 +176,36 @@ void main() {
       expect(pos.intersection(aud).length, dualTargets);
     });
   });
+
+  group('N-Back has no score ceiling', () {
+    test('a harder level outranks a flawless easy one', () {
+      final perfectAtTwo = sessionScore(n: 2, accuracy: 1.0);
+      final strongAtFour = sessionScore(n: 4, accuracy: 0.90);
+      expect(strongAtFour, greaterThan(perfectAtTwo));
+    });
+
+    test('score keeps rising with N, so there is always a harder target', () {
+      var previous = 0;
+      for (var n = minN; n <= maxN; n++) {
+        final score = sessionScore(n: n, accuracy: 1.0);
+        expect(
+          score,
+          greaterThan(previous),
+          reason: 'N=$n did not raise the ceiling',
+        );
+        previous = score;
+      }
+    });
+
+    test('the ceiling is far above a beginner level', () {
+      expect(maxN, greaterThanOrEqualTo(9));
+    });
+
+    test('accuracy still matters at a given level', () {
+      expect(
+        sessionScore(n: 3, accuracy: 0.95),
+        greaterThan(sessionScore(n: 3, accuracy: 0.70)),
+      );
+    });
+  });
 }

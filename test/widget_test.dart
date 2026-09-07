@@ -98,10 +98,16 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Submit'), findsOneWidget);
+    // Input now goes through the in-app keyboard, not a TextField.
+    expect(find.byType(TextField), findsNothing);
+    expect(find.text('7'), findsOneWidget);
+
     for (var i = 0; i < 3; i++) {
-      await tester.enterText(find.byType(TextField), 'definitely-wrong');
-      await tester.tap(find.text('Submit'));
+      // 99999 is far above any answer the math bands can produce.
+      for (var digit = 0; digit < 5; digit++) {
+        await tester.tap(find.text('9'));
+      }
+      await tester.tap(find.byIcon(Icons.keyboard_return_rounded));
       await tester.pump();
     }
 
@@ -610,7 +616,13 @@ void main() {
     }
     await tester.pumpAndSettle();
 
-    expect(find.text('Session complete'), findsOneWidget);
+    // The results screen shows the level and accuracy that produced the score.
+    // (The heading itself may read "New record!" on a first run.)
+    // The results screen states the level and accuracy behind the score, and
+    // its primary action names the level the next session will run at.
+    expect(find.textContaining('% accurate'), findsOneWidget);
+    expect(find.textContaining('N ='), findsAtLeastNWidgets(1));
+    expect(find.textContaining('Correctly ignored'), findsAtLeastNWidgets(1));
   });
 }
 

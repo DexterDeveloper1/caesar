@@ -7,13 +7,15 @@ enum TrainingMode {
   spelling,
   math,
   simon,
-  nback;
+  nback,
+  sudoku;
 
   String get label => switch (this) {
     TrainingMode.spelling => 'Spelling',
     TrainingMode.math => 'Math',
     TrainingMode.simon => 'Simon',
     TrainingMode.nback => 'N-Back',
+    TrainingMode.sudoku => 'Sudoku',
   };
 
   /// Short description shown on the home tile.
@@ -22,6 +24,7 @@ enum TrainingMode {
     TrainingMode.math => 'Solve against the clock',
     TrainingMode.simon => 'Repeat the sequence',
     TrainingMode.nback => 'Match N steps back',
+    TrainingMode.sudoku => 'Fill the grid by logic',
   };
 
   /// How this mode's highscore is described (e.g. "Best level").
@@ -30,5 +33,6 @@ enum TrainingMode {
     TrainingMode.math => 'Best score',
     TrainingMode.simon => 'Best level',
     TrainingMode.nback => 'Best score',
+    TrainingMode.sudoku => 'Best score',
   };
 }

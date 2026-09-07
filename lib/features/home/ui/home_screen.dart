@@ -30,6 +30,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     TrainingMode.math => Routes.game('math'),
     TrainingMode.simon => Routes.simon,
     TrainingMode.nback => Routes.nback,
+    TrainingMode.sudoku => Routes.sudoku,
   };
 
   @override
@@ -462,6 +463,36 @@ class _Footer extends StatelessWidget {
                 Expanded(
                   child: Text(
                     'Highscores',
+                    style: TextStyle(
+                      color: palette.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: palette.textMuted,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: Insets.sm),
+        Pressable(
+          onPressed: () => context.push(Routes.savedWords),
+          child: GlassCard(
+            child: Row(
+              children: [
+                Icon(
+                  Icons.menu_book_rounded,
+                  color: palette.textPrimary,
+                  size: 20,
+                ),
+                const SizedBox(width: Insets.sm),
+                Expanded(
+                  child: Text(
+                    'My words',
                     style: TextStyle(
                       color: palette.textPrimary,
                       fontWeight: FontWeight.w700,
