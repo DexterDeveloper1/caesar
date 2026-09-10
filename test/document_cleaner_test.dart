@@ -261,4 +261,87 @@ void main() {
       expect(result.single, contains('spent foolishly but the gold'));
     });
   });
+
+  group('Alternating running headers', () {
+    // The Richest Man in Babylon alternates: even pages put the page number
+    // BEFORE the title, odd pages glue it AFTER the chapter name. Each variant
+    // therefore appears on only about half the pages.
+    List<String> babylonPages() => [
+      for (var i = 0; i < 20; i++)
+        i.isEven
+            ? '${20 + i}     THERICHESTMAN INBABYLON\nBody sentence $i here.'
+            : 'Seven Cures for a Lean Purse${20 + i}\nBody sentence $i here.',
+    ];
+
+    test('a header with the page number in front is stripped', () {
+      final text = cleanDocument(babylonPages()).join(' ');
+      expect(text, isNot(contains('THERICHESTMAN')));
+    });
+
+    test('a header with the page number glued after is stripped', () {
+      final text = cleanDocument(babylonPages()).join(' ');
+      expect(text, isNot(contains('Seven Cures for a Lean Purse')));
+    });
+
+    test('the body survives', () {
+      final text = cleanDocument(babylonPages()).join(' ');
+      expect(text, contains('Body sentence'));
+    });
+
+    test('an all-caps running header is not rescued by heading detection', () {
+      // Looking like a heading must not exempt a line from being stripped,
+      // or the book fills up with repeated "THERICHESTMAN INBABYLON" blocks.
+      final blocks = cleanDocumentBlocks(babylonPages());
+      expect(blocks.where((b) => b.text.contains('THERICHESTMAN')), isEmpty);
+    });
+
+    test('a genuine one-off heading is still kept', () {
+      final pages = [
+        'ACKNOWLEDGMENTS\nA debt of gratitude is owed to many.',
+        for (var i = 0; i < 9; i++) 'Ordinary body text for page $i.',
+      ];
+      final blocks = cleanDocumentBlocks(pages);
+      expect(
+        blocks.any((b) => b.isHeading && b.text == 'ACKNOWLEDGMENTS'),
+        isTrue,
+      );
+    });
+  });
+
+  group('Heading false positives', () {
+    test('a long all-caps legal line is not a heading', () {
+      // Copyright pages are full of capitals; only short lines are headings.
+      expect(
+        looksLikeHeading(
+          'BOOKS ARE AVAILABLE AT QUANTITY DISCOUNTS WHEN USED TO',
+        ),
+        isFalse,
+      );
+    });
+
+    test('short all-caps titles are still headings', () {
+      expect(looksLikeHeading('ACKNOWLEDGMENTS'), isTrue);
+      expect(looksLikeHeading('THE GOLDEN RULE'), isTrue);
+    });
+  });
+
+  group('Inconsistent header spacing', () {
+    test('the same header is matched despite mangled spacing', () {
+      // Extractors drop and add spaces unpredictably: the same running header
+      // came out as "THERICHESTMAN INBABYLON" on one page and
+      // "THE RICHEST MAN IN BABYLON" on another, so exact matching saw two
+      // different lines and stripped neither.
+      final pages = [
+        for (var i = 0; i < 12; i++)
+          i.isEven
+              ? '${10 + i}THE RICHEST MAN IN BABYLON\nBody line $i.'
+              : 'THERICHESTMAN INBABYLON${10 + i}\nBody line $i.',
+      ];
+      final text = cleanDocument(
+        pages,
+      ).join(' ').toLowerCase().replaceAll(' ', '');
+      expect(text, isNot(contains('therichestmaninbabylon')));
+      expect(cleanDocument(pages).join(' '), contains('Body line'));
+    });
+  });
 }

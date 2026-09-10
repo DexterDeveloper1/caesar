@@ -12,8 +12,21 @@ library;
 /// Words an average adult reads per minute.
 const int _wordsPerMinute = 200;
 
-/// A line must appear on at least this share of pages to count as boilerplate.
+/// A line anywhere on the page must repeat this often to count as boilerplate.
 const double _repeatThreshold = 0.6;
+
+/// A line at the very top or bottom of a page needs far less repetition.
+///
+/// Books commonly alternate running headers — the title on even pages, the
+/// chapter name on odd ones — so each variant only appears on about half the
+/// pages and a single high threshold misses both.
+const double _edgeRepeatThreshold = 0.25;
+
+/// How many lines at each end of a page count as the header/footer zone.
+const int _edgeLines = 2;
+
+/// Fewest repeats before an edge line can be called a running header.
+const int _minEdgeRepeats = 3;
 
 /// Boilerplate is always short; body text is not.
 const int _maxBoilerplateLength = 80;
@@ -33,6 +46,12 @@ const int _gluedLineLength = 150;
 
 /// Longest a line can be and still plausibly be a heading.
 const int _maxHeadingLength = 60;
+
+/// Longest an ALL-CAPS line can be and still be a heading.
+///
+/// Copyright pages shout whole sentences in capitals, so the capitals rule
+/// needs a much tighter limit than named headings like "Chapter One".
+const int _maxCapsHeadingLength = 35;
 
 /// A paragraph of the cleaned document, tagged so headings can be styled.
 class DocumentBlock {
@@ -74,7 +93,11 @@ bool looksLikeHeading(String line) {
 
   // A short line in capitals, e.g. "ACKNOWLEDGMENTS".
   final letters = trimmed.replaceAll(RegExp(r'[^A-Za-z]'), '');
-  if (letters.length >= 3 && letters == letters.toUpperCase()) return true;
+  if (trimmed.length <= _maxCapsHeadingLength &&
+      letters.length >= 3 &&
+      letters == letters.toUpperCase()) {
+    return true;
+  }
 
   return false;
 }
@@ -134,20 +157,37 @@ List<String> _stripBoilerplate(List<String> pages) {
     return [for (final page in pages) _removePagination(page)];
   }
 
-  final counts = <String, int>{};
+  final anywhere = <String, int>{};
+  final atEdges = <String, int>{};
+
   for (final page in pages) {
-    // Count each distinct line once per page.
-    for (final line in _contentLines(page).map(_boilerplateKey).toSet()) {
-      counts[line] = (counts[line] ?? 0) + 1;
+    final lines = _contentLines(page);
+    final keys = lines.map(_boilerplateKey).toSet();
+    for (final key in keys) {
+      anywhere[key] = (anywhere[key] ?? 0) + 1;
+    }
+    final edges = <String>{
+      ...lines.take(_edgeLines).map(_boilerplateKey),
+      ...lines.reversed.take(_edgeLines).map(_boilerplateKey),
+    };
+    for (final key in edges) {
+      atEdges[key] = (atEdges[key] ?? 0) + 1;
     }
   }
 
-  final minimum = (pages.length * _repeatThreshold).ceil();
-  final repeated = {
-    for (final entry in counts.entries)
-      if (entry.value >= minimum && entry.key.length <= _maxBoilerplateLength)
-        entry.key,
-  };
+  final anywhereMin = (pages.length * _repeatThreshold).ceil();
+  // A ratio alone rounds down to 1 on a short document, which would treat the
+  // first line of every page as boilerplate. Repetition must be real.
+  final ratioEdgeMin = (pages.length * _edgeRepeatThreshold).ceil();
+  final edgeMin = ratioEdgeMin < _minEdgeRepeats
+      ? _minEdgeRepeats
+      : ratioEdgeMin;
+
+  bool isBoilerplate(String key) {
+    if (key.isEmpty || key.length > _maxBoilerplateLength) return false;
+    if ((anywhere[key] ?? 0) >= anywhereMin) return true;
+    return (atEdges[key] ?? 0) >= edgeMin;
+  }
 
   return [
     for (final page in pages)
@@ -158,9 +198,10 @@ List<String> _stripBoilerplate(List<String> pages) {
             final line = raw.trim();
             if (line.isEmpty) return true;
             if (_isPagination(line)) return false;
-            // Never discard a heading, even a repeated one.
-            if (looksLikeHeading(line)) return true;
-            return !repeated.contains(_boilerplateKey(line));
+            // Looking like a heading is deliberately NOT a reprieve: a running
+            // header is often set in capitals, and exempting it left one copy
+            // of the book title on every other page.
+            return !isBoilerplate(_boilerplateKey(line));
           })
           .join('\n'),
   ];
@@ -168,10 +209,19 @@ List<String> _stripBoilerplate(List<String> pages) {
 
 /// Normalises a line for repeat-detection.
 ///
-/// Running headers often carry the page number glued on — "The Five Laws of
-/// Gold69", "…Gold70" — so trailing digits are dropped before comparing.
-String _boilerplateKey(String line) =>
-    line.trim().replaceAll(RegExp(r'\s*\d+\s*$'), '').trim();
+/// Normalises a line for repeat-detection.
+///
+/// Two things defeat exact matching. Running headers carry the page number on
+/// either side — "The Five Laws of Gold69" on one page, "28  THERICHESTMAN
+/// INBABYLON" on the next — and extractors mangle spacing unpredictably, so
+/// the same header can arrive as "THERICHESTMAN INBABYLON" or "THE RICHEST MAN
+/// IN BABYLON". Comparing without spaces, case, or edge digits makes those all
+/// one key.
+String _boilerplateKey(String line) => line
+    .toLowerCase()
+    .replaceAll(RegExp(r'\s+'), '')
+    .replaceAll(RegExp(r'^\d+'), '')
+    .replaceAll(RegExp(r'\d+$'), '');
 
 String _removePagination(String page) => page
     .split('\n')

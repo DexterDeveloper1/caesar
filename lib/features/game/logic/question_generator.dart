@@ -33,16 +33,45 @@ class QuestionGenerator {
   /// feeling repetitive.
   final Map<int, List<String>> _bags = {};
 
-  /// How long the word is shown before it is hidden, in milliseconds.
-  /// Shrinks as the level climbs, with a floor so it stays readable.
-  static int revealMillis(int level) => max(700, 1800 - (level - 1) * 90);
+  /// Characters per second the player can realistically tap out.
+  ///
+  /// Large-scale studies put mobile typing at roughly 36-38 words per minute
+  /// (~3 characters/second). Our in-app keyboard has no prediction, swipe or
+  /// autocorrect, so this is set deliberately below that.
+  static const double typingCharsPerSecond = 2.5;
+
+  /// How long a word is shown before it is hidden.
+  ///
+  /// Word-recall experiments conventionally present an item for about one
+  /// second, so that is the anchor for a mid-length word. It scales with word
+  /// length — eleven letters take longer to take in than three — and tightens
+  /// as the level rises. Showing it much longer than this stops training
+  /// recall and starts letting the player simply copy it.
+  static int revealMillis(int level, int wordLength) {
+    const perLetter = 90;
+    const base = 450;
+    final forLength = base + perLetter * wordLength;
+    final tightened = forLength - (level - 1) * 60;
+    return max(500, tightened);
+  }
 
   /// Seconds allowed to answer.
-  static int answerSeconds(GameType mode, int level) => switch (mode) {
-    // Typing a whole word needs a little more room than a single number.
-    GameType.spelling => max(6, 15 - level),
-    GameType.math => max(5, 13 - level),
-  };
+  ///
+  /// For spelling this is the time to physically type the word plus an
+  /// allowance for recalling it. Without the typing component a long word at a
+  /// high level became impossible — the clock ran out before the last letter
+  /// could be tapped, which is unfair rather than challenging.
+  static int answerSeconds(GameType mode, int level, {int wordLength = 6}) {
+    switch (mode) {
+      case GameType.math:
+        return max(5, 13 - level);
+      case GameType.spelling:
+        final typing = wordLength / typingCharsPerSecond;
+        // Thinking room shrinks with skill, but never disappears.
+        final recall = max(1.2, 3.0 - (level - 1) * 0.18);
+        return (typing + recall).ceil();
+    }
+  }
 
   Question generate(GameType mode, int level) {
     return switch (mode) {

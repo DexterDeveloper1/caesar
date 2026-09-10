@@ -418,7 +418,8 @@ class _LetterSlots extends StatelessWidget {
               ),
               alignment: Alignment.center,
               child: Text(
-                i < typed.length ? typed[i].toUpperCase() : '',
+                // Lower case, matching how the word was shown.
+                i < typed.length ? typed[i] : '',
                 style: TextStyle(
                   color: palette.textPrimary,
                   fontSize: 26,

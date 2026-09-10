@@ -184,10 +184,10 @@ void main() {
 
     test('reveal time shrinks with difficulty but has a floor', () {
       expect(
-        QuestionGenerator.revealMillis(5),
-        lessThan(QuestionGenerator.revealMillis(1)),
+        QuestionGenerator.revealMillis(5, 6),
+        lessThan(QuestionGenerator.revealMillis(1, 6)),
       );
-      expect(QuestionGenerator.revealMillis(50), greaterThanOrEqualTo(700));
+      expect(QuestionGenerator.revealMillis(50, 6), greaterThanOrEqualTo(500));
     });
   });
 

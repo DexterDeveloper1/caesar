@@ -66,7 +66,11 @@ class GameController extends Notifier<GameState> {
     final question = _generator.generate(_mode, difficulty);
     _answer = question.answer;
     _maskedPrompt = question.prompt;
-    final allotted = QuestionGenerator.answerSeconds(_mode, difficulty);
+    final allotted = QuestionGenerator.answerSeconds(
+      _mode,
+      difficulty,
+      wordLength: question.answer.length,
+    );
 
     return GameState(
       // During a reveal the word itself is on screen; otherwise the prompt is.
@@ -91,7 +95,12 @@ class GameController extends Notifier<GameState> {
     }
     _timer?.cancel();
     _revealTimer = Timer(
-      Duration(milliseconds: QuestionGenerator.revealMillis(state.difficulty)),
+      Duration(
+        milliseconds: QuestionGenerator.revealMillis(
+          state.difficulty,
+          _answer.length,
+        ),
+      ),
       () {
         // Hide the word and only then start the countdown, so memorising time
         // is not also answering time.

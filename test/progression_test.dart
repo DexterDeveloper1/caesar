@@ -208,4 +208,87 @@ void main() {
       );
     });
   });
+
+  group('Spelling timing', () {
+    // Two research anchors:
+    //  * Word-recall experiments present a word for about one second.
+    //  * Large-scale studies put mobile typing at ~36-38 WPM (~3 chars/sec);
+    //    an unfamiliar in-app keyboard with no prediction is slower still.
+
+    test('reveal time is near the one-second research standard', () {
+      // A typical 6-letter word at the starting level.
+      final ms = QuestionGenerator.revealMillis(1, 6);
+      expect(ms, greaterThanOrEqualTo(800));
+      expect(ms, lessThanOrEqualTo(1400));
+    });
+
+    test('a longer word is shown for longer', () {
+      expect(
+        QuestionGenerator.revealMillis(1, 11),
+        greaterThan(QuestionGenerator.revealMillis(1, 3)),
+      );
+    });
+
+    test('reveal time shrinks as the level rises', () {
+      expect(
+        QuestionGenerator.revealMillis(10, 6),
+        lessThan(QuestionGenerator.revealMillis(1, 6)),
+      );
+    });
+
+    test('reveal time never drops below a readable floor', () {
+      expect(QuestionGenerator.revealMillis(99, 3), greaterThanOrEqualTo(500));
+    });
+
+    test('answer time always allows the word to be physically typed', () {
+      // At a conservative 2.5 characters per second, plus a moment to recall.
+      for (var length = 3; length <= 12; length++) {
+        for (var level = 1; level <= maxLevel; level++) {
+          final seconds = QuestionGenerator.answerSeconds(
+            GameType.spelling,
+            level,
+            wordLength: length,
+          );
+          final typingTime = length / 2.5;
+          expect(
+            seconds,
+            greaterThan(typingTime),
+            reason: 'level $level, $length letters leaves no thinking time',
+          );
+        }
+      }
+    });
+
+    test('a longer word is given more time', () {
+      expect(
+        QuestionGenerator.answerSeconds(GameType.spelling, 1, wordLength: 11),
+        greaterThan(
+          QuestionGenerator.answerSeconds(GameType.spelling, 1, wordLength: 3),
+        ),
+      );
+    });
+
+    test('answer time tightens with level but stays achievable', () {
+      final easy = QuestionGenerator.answerSeconds(
+        GameType.spelling,
+        1,
+        wordLength: 8,
+      );
+      final hard = QuestionGenerator.answerSeconds(
+        GameType.spelling,
+        maxLevel,
+        wordLength: 8,
+      );
+      expect(hard, lessThan(easy));
+      // Still more than the time it takes to tap eight letters.
+      expect(hard, greaterThan(8 / 2.5));
+    });
+
+    test('math timing is unchanged by word length', () {
+      expect(
+        QuestionGenerator.answerSeconds(GameType.math, 3, wordLength: 3),
+        QuestionGenerator.answerSeconds(GameType.math, 3, wordLength: 11),
+      );
+    });
+  });
 }
