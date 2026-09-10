@@ -109,170 +109,220 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       );
     }
 
+    // Spelling hides the word behind one slot per letter; the prompt carries
+    // those slots, so the letter count comes from it.
+    final slotCount = '•'.allMatches(state.prompt).length;
+    final showSlots =
+        widget.mode == GameType.spelling && !state.revealing && slotCount > 0;
+
     return QuitGuard(
       child: Scaffold(
         body: AppBackground(
           child: SafeArea(
-            // Scrollable so the on-screen keyboard can never squeeze the answer
-            // field and Submit button off the bottom.
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(Insets.lg),
-              child: Column(
-                children: [
-                  _TopBar(mode: _trainingMode),
-                  const SizedBox(height: Insets.lg),
-
-                  // HUD: score, lives, and the countdown.
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // Keys shrink on short screens so the board always fits.
+                final keyHeight = (constraints.maxHeight * 0.075).clamp(
+                  30.0,
+                  46.0,
+                );
+                return Padding(
+                  padding: const EdgeInsets.all(Insets.md),
+                  // A fixed column, not a scroll view: the keyboard is pinned to
+                  // the bottom so it can never be pushed off-screen, and the
+                  // question can never be scrolled out of sight.
+                  child: Column(
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      _TopBar(mode: _trainingMode),
+                      const SizedBox(height: Insets.md),
+
+                      // HUD: score, lives, and the countdown.
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'SCORE',
-                            style: TextStyle(
-                              color: palette.textMuted,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                          PopOnChange(
-                            trigger: state.score,
-                            child: CountUp(
-                              value: state.score,
-                              style: TextStyle(
-                                color: palette.textPrimary,
-                                fontSize: 34,
-                                fontWeight: FontWeight.w800,
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'SCORE',
+                                style: TextStyle(
+                                  color: palette.textMuted,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 1.2,
+                                ),
                               ),
-                            ),
+                              PopOnChange(
+                                trigger: state.score,
+                                child: CountUp(
+                                  value: state.score,
+                                  style: TextStyle(
+                                    color: palette.textPrimary,
+                                    fontSize: 30,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
+                          LifePips(
+                            used: state.strikes,
+                            total: GameConfig.maxStrikes,
+                          ),
+                          if (state.revealing)
+                            Icon(
+                              Icons.visibility_rounded,
+                              size: 30,
+                              color: style.accent,
+                            )
+                          else
+                            CountdownRing(
+                              secondsLeft: state.timeLeft,
+                              totalSeconds: state.totalTime,
+                            ),
                         ],
                       ),
-                      LifePips(
-                        used: state.strikes,
-                        total: GameConfig.maxStrikes,
-                      ),
-                      if (state.revealing)
-                        Icon(
-                          Icons.visibility_rounded,
-                          size: 30,
-                          color: styleOf(_trainingMode).accent,
-                        )
-                      else
-                        CountdownRing(
-                          secondsLeft: state.timeLeft,
-                          totalSeconds: state.totalTime,
+
+                      // Everything between the HUD and the keyboard flexes.
+                      Expanded(
+                        child: Center(
+                          child: SingleChildScrollView(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                ShakeOnChange(
+                                  trigger: state.strikes,
+                                  child: AnimatedContainer(
+                                    duration: Motion.fast,
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: Insets.lg,
+                                      horizontal: Insets.md,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          _flash?.withValues(alpha: 0.22) ??
+                                          palette.surface,
+                                      borderRadius: Radii.card,
+                                      border: Border.all(
+                                        color: _flash ?? palette.surfaceBorder,
+                                        width: _flash != null ? 2 : 1,
+                                      ),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Text(
+                                          widget.mode == GameType.math
+                                              ? 'Solve it'
+                                              : state.revealing
+                                              ? 'Memorise it…'
+                                              : 'Type the word',
+                                          style: TextStyle(
+                                            color: palette.textMuted,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w700,
+                                            letterSpacing: 1.1,
+                                          ),
+                                        ),
+                                        const SizedBox(height: Insets.md),
+                                        // Fixed height, scaled to fit: a long word
+                                        // can no longer wrap and shove the rest of
+                                        // the screen around.
+                                        SizedBox(
+                                          height: 76,
+                                          child: Center(
+                                            child: FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              child: showSlots
+                                                  ? _LetterSlots(
+                                                      count: slotCount,
+                                                      typed: _input,
+                                                      accent: style.accent,
+                                                      palette: palette,
+                                                    )
+                                                  : PopOnChange(
+                                                      trigger: state.prompt,
+                                                      scale: 1.08,
+                                                      child: Text(
+                                                        state.prompt,
+                                                        textAlign:
+                                                            TextAlign.center,
+                                                        style: TextStyle(
+                                                          color: palette
+                                                              .textPrimary,
+                                                          fontSize: 42,
+                                                          fontWeight:
+                                                              FontWeight.w800,
+                                                          letterSpacing: 2,
+                                                        ),
+                                                      ),
+                                                    ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                // Numbers still need a plain answer box; spelling
+                                // shows the typed letters in the slots above.
+                                if (!showSlots) ...[
+                                  const SizedBox(height: Insets.md),
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: Insets.md,
+                                      horizontal: Insets.md,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: palette.surface,
+                                      borderRadius: Radii.card,
+                                      border: Border.all(
+                                        color: _input.isEmpty
+                                            ? palette.surfaceBorder
+                                            : style.accent,
+                                        width: _input.isEmpty ? 1 : 2,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      _input.isEmpty ? 'Your answer' : _input,
+                                      textAlign: TextAlign.center,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: _input.isEmpty
+                                            ? palette.textMuted
+                                            : palette.textPrimary,
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 1.5,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
                         ),
+                      ),
+
+                      const SizedBox(height: Insets.sm),
+                      // Always-present keyboard: no show/hide animation eating the
+                      // clock, and no autocorrect to leak the answer.
+                      GameKeyboard(
+                        layout: widget.mode == GameType.math
+                            ? KeyboardLayout.digits
+                            : KeyboardLayout.letters,
+                        accent: style.accent,
+                        keyHeight: keyHeight,
+                        onKey: _type,
+                        onBackspace: _backspace,
+                        onSubmit: _submit,
+                      ),
                     ],
                   ),
-                  const SizedBox(height: Insets.xl),
-
-                  // The question itself.
-                  ShakeOnChange(
-                    trigger: state.strikes,
-                    child: AnimatedContainer(
-                      duration: Motion.fast,
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(
-                        vertical: Insets.xl,
-                        horizontal: Insets.lg,
-                      ),
-                      decoration: BoxDecoration(
-                        color:
-                            _flash?.withValues(alpha: 0.22) ?? palette.surface,
-                        borderRadius: Radii.card,
-                        border: Border.all(
-                          color: _flash ?? palette.surfaceBorder,
-                          width: _flash != null ? 2 : 1,
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Text(
-                            widget.mode == GameType.math
-                                ? 'Solve it'
-                                : state.revealing
-                                ? 'Memorise it…'
-                                : 'Type the word',
-                            style: TextStyle(
-                              color: palette.textMuted,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1.1,
-                            ),
-                          ),
-                          const SizedBox(height: Insets.md),
-                          PopOnChange(
-                            trigger: state.prompt,
-                            scale: 1.08,
-                            child: Text(
-                              state.prompt,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: palette.textPrimary,
-                                fontSize: 42,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 2,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: Insets.lg),
-
-                  // Our own answer box: the typed text is state, not a
-                  // TextField, so the system keyboard never opens.
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: Insets.md,
-                      horizontal: Insets.md,
-                    ),
-                    decoration: BoxDecoration(
-                      color: palette.surface,
-                      borderRadius: Radii.card,
-                      border: Border.all(
-                        color: _input.isEmpty
-                            ? palette.surfaceBorder
-                            : style.accent,
-                        width: _input.isEmpty ? 1 : 2,
-                      ),
-                    ),
-                    child: Text(
-                      _input.isEmpty ? 'Your answer' : _input,
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: _input.isEmpty
-                            ? palette.textMuted
-                            : palette.textPrimary,
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: Insets.md),
-                  // Always-present keyboard: no show/hide animation eating the
-                  // clock, and no autocorrect to leak the answer.
-                  GameKeyboard(
-                    layout: widget.mode == GameType.math
-                        ? KeyboardLayout.digits
-                        : KeyboardLayout.letters,
-                    accent: style.accent,
-                    onKey: _type,
-                    onBackspace: _backspace,
-                    onSubmit: _submit,
-                  ),
-                  const SizedBox(height: Insets.xl),
-                ],
-              ),
+                );
+              },
             ),
           ),
         ),
@@ -320,6 +370,63 @@ class _TopBar extends StatelessWidget {
             fontWeight: FontWeight.w700,
           ),
         ),
+      ],
+    );
+  }
+}
+
+/// One box per letter of the hidden word, filling in as the player types.
+///
+/// The mask and the answer field used to be separate, which meant the length
+/// hint told you nothing useful and a long word wrapped and shifted the page.
+/// Merging them makes the length meaningful — it doubles as a progress
+/// indicator — and the fixed layout above keeps it from moving anything.
+class _LetterSlots extends StatelessWidget {
+  final int count;
+  final String typed;
+  final Color accent;
+  final AppPalette palette;
+
+  const _LetterSlots({
+    required this.count,
+    required this.typed,
+    required this.accent,
+    required this.palette,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < count; i++)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: AnimatedContainer(
+              duration: Motion.instant,
+              width: 40,
+              height: 54,
+              decoration: BoxDecoration(
+                color: i < typed.length
+                    ? accent.withValues(alpha: 0.18)
+                    : palette.surfaceBorder.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: i < typed.length ? accent : palette.surfaceBorder,
+                  width: i < typed.length ? 2 : 1,
+                ),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                i < typed.length ? typed[i].toUpperCase() : '',
+                style: TextStyle(
+                  color: palette.textPrimary,
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }

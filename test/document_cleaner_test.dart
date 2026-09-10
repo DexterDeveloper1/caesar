@@ -168,4 +168,97 @@ void main() {
       expect(text, ['ACKNOWLEDGMENTS', 'A debt of gratitude.']);
     });
   });
+
+  group('Real-world extractor shapes', () {
+    // Extractors return wildly different line structures. Measured on real
+    // books: one gives whole paragraphs as single 1000+ char lines, another
+    // gives one word per line with a blank line between each.
+
+    test('one-word-per-line pages are rebuilt into sentences', () {
+      // "The Riddle" extracted at ~4 characters per line, 388 blank lines.
+      final exploded = [
+        'The\n\nriddle\n\nwas\n\nsolved\n\nat\n\nlast.\n\n'
+            'Everyone\n\ncheered\n\nloudly.',
+      ];
+      final result = cleanDocument(exploded);
+      expect(result.join(' '), contains('The riddle was solved at last.'));
+      // Must not be one block per word.
+      expect(result.length, lessThan(4));
+    });
+
+    test('a whole page glued into one line is split into paragraphs', () {
+      // "Babylon B" produced a single 1691-character line per page.
+      final sentence =
+          'This is a sentence of reasonable length that carries on. ';
+      final glued = [sentence * 40];
+      final result = cleanDocument(glued);
+      expect(result.length, greaterThan(1), reason: 'should not be one wall');
+      for (final p in result) {
+        expect(p.length, lessThanOrEqualTo(900), reason: 'paragraph too long');
+      }
+    });
+
+    test('no paragraph is left as an unreadable wall of text', () {
+      final long = List.filled(60, 'Sentence number one here.').join(' ');
+      for (final p in cleanDocument([long])) {
+        expect(p.length, lessThanOrEqualTo(900));
+      }
+    });
+
+    test('splitting keeps every word', () {
+      final sentence = 'Alpha beta gamma delta epsilon zeta eta theta. ';
+      final source = sentence * 30;
+      final joined = cleanDocument([source]).join(' ');
+      final before = source
+          .split(RegExp(r'\s+'))
+          .where((w) => w.isNotEmpty)
+          .length;
+      final after = joined
+          .split(RegExp(r'\s+'))
+          .where((w) => w.isNotEmpty)
+          .length;
+      expect(after, before, reason: 'no text may be dropped when splitting');
+    });
+
+    test(
+      'boilerplate repeated mid-page is stripped, not just at the edges',
+      () {
+        // "Babylon B" repeated a promo line inside every page.
+        final pages = List.generate(
+          6,
+          (i) =>
+              'Chapter body line $i here.\nGo to www.example.com\n'
+              'More body text for page $i.',
+        );
+        final text = cleanDocument(pages).join(' ');
+        expect(text, isNot(contains('www.example.com')));
+        expect(text, contains('More body text'));
+      },
+    );
+
+    test('a running header with the page number glued on is stripped', () {
+      // "Babylon A" produced "The Five Laws of Gold69", "...Gold70", etc.
+      final pages = List.generate(
+        8,
+        (i) => 'The Five Laws of Gold${60 + i}\nBody text for page $i follows.',
+      );
+      final text = cleanDocument(pages).join(' ');
+      expect(text, isNot(contains('Five Laws of Gold')));
+      expect(text, contains('Body text'));
+    });
+
+    test('tab-separated words are normalised to spaces', () {
+      // "The 5 AM Club" separated every word with a tab.
+      final result = cleanDocument(['knows\tto\tbe\tright\tand\ttrue.']);
+      expect(result.single, 'knows to be right and true.');
+    });
+
+    test('normal wrapped prose is still handled correctly', () {
+      final result = cleanDocument([
+        'have little. Some I spent wisely, some I spent foolishly\n'
+            'but the gold was gone before I knew where.',
+      ]);
+      expect(result.single, contains('spent foolishly but the gold'));
+    });
+  });
 }

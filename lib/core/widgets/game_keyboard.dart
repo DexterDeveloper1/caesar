@@ -22,6 +22,10 @@ class GameKeyboard extends StatelessWidget {
   final VoidCallback onSubmit;
   final Color accent;
 
+  /// Height of a single key. Shrinks on short screens (landscape, small
+  /// devices) so the board always fits rather than overflowing.
+  final double keyHeight;
+
   const GameKeyboard({
     super.key,
     required this.layout,
@@ -29,6 +33,7 @@ class GameKeyboard extends StatelessWidget {
     required this.onBackspace,
     required this.onSubmit,
     required this.accent,
+    this.keyHeight = 46,
   });
 
   static const List<String> _letterRows = [
@@ -53,6 +58,7 @@ class GameKeyboard extends StatelessWidget {
                   label: char.toUpperCase(),
                   onTap: () => onKey(char),
                   accent: accent,
+                  height: keyHeight,
                 ),
             ],
           ),
@@ -65,6 +71,7 @@ class GameKeyboard extends StatelessWidget {
               onTap: onBackspace,
               accent: accent,
               flex: 3,
+              height: keyHeight,
             ),
             _Key(
               icon: Icons.keyboard_return_rounded,
@@ -72,6 +79,7 @@ class GameKeyboard extends StatelessWidget {
               accent: accent,
               flex: 4,
               filled: true,
+              height: keyHeight,
             ),
           ],
         ),
@@ -97,6 +105,7 @@ class _Key extends StatelessWidget {
   final Color accent;
   final int flex;
   final bool filled;
+  final double height;
 
   const _Key({
     this.label,
@@ -105,6 +114,7 @@ class _Key extends StatelessWidget {
     required this.accent,
     this.flex = 1,
     this.filled = false,
+    this.height = 46,
   });
 
   @override
@@ -120,7 +130,7 @@ class _Key extends StatelessWidget {
           child: Container(
             // Roughly the height of a system keyboard key, and comfortably
             // tappable on the narrowest phones.
-            height: 46,
+            height: height,
             decoration: BoxDecoration(
               color: filled ? accent : palette.surface,
               borderRadius: BorderRadius.circular(8),
