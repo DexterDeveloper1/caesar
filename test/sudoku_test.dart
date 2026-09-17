@@ -216,15 +216,144 @@ void main() {
       expect(expert, greaterThan(easy));
     });
 
-    test('score never goes negative, however bad the run', () {
+    test('a finished puzzle always scores above zero, however bad the run', () {
+      // Scoring zero was the old behaviour and it was wrong: a highscore is
+      // only stored when it beats the previous best, so a zero could never be
+      // recorded and the board read "Not played" forever.
       expect(
         sudokuScore(
           difficulty: SudokuDifficulty.easy,
           seconds: 99999,
           mistakes: 999,
         ),
-        0,
+        greaterThan(0),
       );
+    });
+  });
+
+  group('Completing a puzzle is always worth recording', () {
+    // The bug: budgets were 10-25 minutes, but a real 9x9 takes longer, so the
+    // score hit zero. HighscoresController only records when score > best, and
+    // 0 is never greater than 0 — so solving repeatedly still read "Not
+    // played".
+
+    test('a slow but complete solve still scores above zero', () {
+      for (final difficulty in SudokuDifficulty.values) {
+        final score = sudokuScore(
+          difficulty: difficulty,
+          seconds: 3600, // a full hour
+          mistakes: 8,
+        );
+        expect(
+          score,
+          greaterThan(0),
+          reason: 'finishing ${difficulty.name} must always count',
+        );
+      }
+    });
+
+    test('a realistic easy solve scores sensibly', () {
+      // Twelve minutes with two slips is an ordinary easy game.
+      final score = sudokuScore(
+        difficulty: SudokuDifficulty.easy,
+        seconds: 12 * 60,
+        mistakes: 2,
+      );
+      expect(score, greaterThan(0));
+    });
+
+    test('faster is still better and mistakes still cost', () {
+      final quick = sudokuScore(
+        difficulty: SudokuDifficulty.medium,
+        seconds: 300,
+        mistakes: 0,
+      );
+      final slow = sudokuScore(
+        difficulty: SudokuDifficulty.medium,
+        seconds: 1800,
+        mistakes: 0,
+      );
+      final sloppy = sudokuScore(
+        difficulty: SudokuDifficulty.medium,
+        seconds: 300,
+        mistakes: 5,
+      );
+      expect(quick, greaterThan(slow));
+      expect(sloppy, lessThan(quick));
+    });
+
+    test('a harder puzzle is worth more even when solved slowly', () {
+      final easyFast = sudokuScore(
+        difficulty: SudokuDifficulty.easy,
+        seconds: 60,
+        mistakes: 0,
+      );
+      final expertSlow = sudokuScore(
+        difficulty: SudokuDifficulty.expert,
+        seconds: 2400,
+        mistakes: 0,
+      );
+      expect(expertSlow, greaterThan(easyFast));
+    });
+  });
+
+  group('Mistake limit', () {
+    test('every difficulty allows a limited number of mistakes', () {
+      for (final difficulty in SudokuDifficulty.values) {
+        expect(difficulty.mistakeLimit, greaterThan(0));
+        expect(difficulty.mistakeLimit, lessThanOrEqualTo(6));
+      }
+    });
+
+    test('easier puzzles forgive more mistakes than expert', () {
+      expect(
+        SudokuDifficulty.easy.mistakeLimit,
+        greaterThanOrEqualTo(SudokuDifficulty.expert.mistakeLimit),
+      );
+    });
+
+    test('a game ends once the limit is exceeded', () {
+      final puzzle = generateSudoku(SudokuDifficulty.easy, rng: Random(5));
+      var game = SudokuGame.from(puzzle);
+      final blanks = List.generate(
+        81,
+        (i) => i,
+      ).where((i) => puzzle.givens[i] == 0).toList();
+
+      final limit = SudokuDifficulty.easy.mistakeLimit;
+      for (var i = 0; i < limit; i++) {
+        final cell = blanks[i];
+        final wrong = puzzle.solution[cell] == 9 ? 1 : 9;
+        game = game.place(cell, wrong);
+      }
+      expect(game.isFailed, isTrue);
+      expect(game.mistakes, limit);
+    });
+
+    test('a game with mistakes under the limit is still alive', () {
+      final puzzle = generateSudoku(SudokuDifficulty.easy, rng: Random(5));
+      var game = SudokuGame.from(puzzle);
+      final blank = List.generate(
+        81,
+        (i) => i,
+      ).firstWhere((i) => puzzle.givens[i] == 0);
+      final wrong = puzzle.solution[blank] == 9 ? 1 : 9;
+      game = game.place(blank, wrong);
+      expect(game.isFailed, isFalse);
+    });
+  });
+
+  group('Difficulty matches published clue bands', () {
+    // Published guidance: easy 36-45 clues, medium 30-35, hard 26-30,
+    // expert/extreme below that.
+    test('clue counts sit in the expected bands', () {
+      int clues(SudokuDifficulty d) =>
+          generateSudoku(d, rng: Random(9)).clueCount;
+
+      expect(clues(SudokuDifficulty.easy), inInclusiveRange(36, 45));
+      expect(clues(SudokuDifficulty.medium), inInclusiveRange(30, 35));
+      expect(clues(SudokuDifficulty.hard), inInclusiveRange(26, 30));
+      expect(clues(SudokuDifficulty.expert), inInclusiveRange(17, 26));
     });
   });
 }

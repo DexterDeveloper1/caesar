@@ -18,13 +18,53 @@ enum SudokuDifficulty {
     SudokuDifficulty.expert => 'Expert',
   };
 
-  /// Clues left on the board. Fewer clues means more deduction is required.
-  /// The floor is 17 — the proven minimum for a uniquely solvable Sudoku.
+  /// Clues left on the board.
+  ///
+  /// Bands follow published guidance: easy 36-45 clues, medium 30-35, hard
+  /// 26-30, expert below that. The 17-clue floor is the proven minimum for a
+  /// uniquely solvable grid.
   int get targetClues => switch (this) {
-    SudokuDifficulty.easy => 45,
-    SudokuDifficulty.medium => 36,
-    SudokuDifficulty.hard => 30,
-    SudokuDifficulty.expert => 26,
+    SudokuDifficulty.easy => 40,
+    SudokuDifficulty.medium => 32,
+    SudokuDifficulty.hard => 28,
+    SudokuDifficulty.expert => 24,
+  };
+
+  /// Wrong entries allowed before the puzzle is failed.
+  ///
+  /// Without a limit the grid can be brute-forced — try every digit in a cell
+  /// until one sticks — which turns a logic puzzle into guesswork. Easier
+  /// puzzles forgive more, because slips there are carelessness rather than
+  /// faulty reasoning.
+  int get mistakeLimit => switch (this) {
+    SudokuDifficulty.easy => 5,
+    SudokuDifficulty.medium => 4,
+    SudokuDifficulty.hard => 3,
+    SudokuDifficulty.expert => 3,
+  };
+
+  /// Points awarded simply for finishing.
+  int get completionPoints => switch (this) {
+    SudokuDifficulty.easy => 300,
+    SudokuDifficulty.medium => 550,
+    SudokuDifficulty.hard => 900,
+    SudokuDifficulty.expert => 1400,
+  };
+
+  /// A par time, in seconds, for a competent solver at this level.
+  int get parSeconds => switch (this) {
+    SudokuDifficulty.easy => 9 * 60,
+    SudokuDifficulty.medium => 15 * 60,
+    SudokuDifficulty.hard => 25 * 60,
+    SudokuDifficulty.expert => 40 * 60,
+  };
+
+  /// Points lost per wrong entry.
+  int get mistakePenalty => switch (this) {
+    SudokuDifficulty.easy => 20,
+    SudokuDifficulty.medium => 35,
+    SudokuDifficulty.hard => 55,
+    SudokuDifficulty.expert => 85,
   };
 }
 
@@ -132,6 +172,15 @@ class SudokuGame {
   bool isWrong(int index) =>
       entries[index] != 0 && entries[index] != puzzle.solution[index];
 
+  /// True once too many wrong entries have been made.
+  bool get isFailed => mistakes >= puzzle.difficulty.mistakeLimit;
+
+  /// Wrong entries still available.
+  int get mistakesLeft {
+    final left = puzzle.difficulty.mistakeLimit - mistakes;
+    return left < 0 ? 0 : left;
+  }
+
   bool get isComplete {
     for (var i = 0; i < sudokuCells; i++) {
       if (entries[i] != puzzle.solution[i]) return false;
@@ -145,7 +194,7 @@ class SudokuGame {
 
   /// Writes [value] into [index]. Givens are immovable.
   SudokuGame place(int index, int value) {
-    if (isGiven(index)) return this;
+    if (isGiven(index) || isFailed) return this;
     final next = List<int>.of(entries)..[index] = value;
     final wrong = value != 0 && value != puzzle.solution[index];
     return SudokuGame(

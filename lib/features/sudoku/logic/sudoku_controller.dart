@@ -33,6 +33,10 @@ class SudokuState {
   final int elapsedSeconds;
   final bool finished;
 
+  /// True when the run ended by running out of mistakes rather than by
+  /// solving the grid.
+  final bool failed;
+
   /// True while the first puzzle is being generated.
   final bool loading;
 
@@ -41,6 +45,7 @@ class SudokuState {
     required this.selected,
     required this.elapsedSeconds,
     required this.finished,
+    this.failed = false,
     this.loading = false,
   });
 
@@ -62,6 +67,7 @@ class SudokuState {
     bool clearSelection = false,
     int? elapsedSeconds,
     bool? finished,
+    bool? failed,
     bool? loading,
   }) {
     return SudokuState(
@@ -69,6 +75,7 @@ class SudokuState {
       selected: clearSelection ? null : (selected ?? this.selected),
       elapsedSeconds: elapsedSeconds ?? this.elapsedSeconds,
       finished: finished ?? this.finished,
+      failed: failed ?? this.failed,
       loading: loading ?? this.loading,
     );
   }
@@ -113,7 +120,11 @@ class SudokuController extends Notifier<SudokuState> {
 
     final game = state.game.place(index, value);
     state = state.copyWith(game: game);
-    if (game.isComplete) _finish();
+    if (game.isComplete) {
+      _finish(solved: true);
+    } else if (game.isFailed) {
+      _finish(solved: false);
+    }
   }
 
   void erase() {
@@ -122,12 +133,20 @@ class SudokuController extends Notifier<SudokuState> {
     state = state.copyWith(game: state.game.erase(index));
   }
 
-  void _finish() {
+  void _finish({required bool solved}) {
     _timer?.cancel();
-    state = state.copyWith(finished: true, clearSelection: true);
-    ref
-        .read(highscoresControllerProvider.notifier)
-        .submit(TrainingMode.sudoku, state.score);
+    state = state.copyWith(
+      finished: true,
+      failed: !solved,
+      clearSelection: true,
+    );
+    // Only a completed grid has a score; an abandoned one still counts as
+    // training, so the streak is preserved either way.
+    if (solved) {
+      ref
+          .read(highscoresControllerProvider.notifier)
+          .submit(TrainingMode.sudoku, state.score);
+    }
     ref.read(statsControllerProvider.notifier).recordSession();
   }
 

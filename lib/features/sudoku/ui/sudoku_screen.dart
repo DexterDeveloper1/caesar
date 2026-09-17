@@ -28,7 +28,7 @@ class SudokuScreen extends ConsumerWidget {
 
     if (state.finished) {
       return ResultsView(
-        title: 'Solved!',
+        title: state.failed ? 'Out of mistakes' : 'Solved!',
         mode: TrainingMode.sudoku,
         score: state.score,
         scoreLabel:
@@ -54,6 +54,7 @@ class SudokuScreen extends ConsumerWidget {
                   _StatusBar(
                     seconds: state.elapsedSeconds,
                     mistakes: state.game.mistakes,
+                    mistakeLimit: state.game.puzzle.difficulty.mistakeLimit,
                     remaining: state.game.remaining,
                   ),
                   const SizedBox(height: Insets.md),
@@ -104,31 +105,40 @@ String _clock(int seconds) {
 class _StatusBar extends StatelessWidget {
   final int seconds;
   final int mistakes;
+  final int mistakeLimit;
   final int remaining;
 
   const _StatusBar({
     required this.seconds,
     required this.mistakes,
+    required this.mistakeLimit,
     required this.remaining,
   });
 
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    Widget item(IconData icon, String value, Color tint) => Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 16, color: tint),
-        const SizedBox(width: Insets.xs),
-        Text(
-          value,
-          style: TextStyle(
-            color: palette.textPrimary,
-            fontWeight: FontWeight.w700,
-            fontSize: 13,
-          ),
+    // Each item flexes so a longer label (e.g. "3/5") can never overflow the
+    // row on a narrow phone.
+    Widget item(IconData icon, String value, Color tint) => Expanded(
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: tint),
+            const SizedBox(width: Insets.xs),
+            Text(
+              value,
+              style: TextStyle(
+                color: palette.textPrimary,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
 
     return GlassCard(
@@ -142,7 +152,7 @@ class _StatusBar extends StatelessWidget {
           item(Icons.timer_outlined, _clock(seconds), palette.textMuted),
           item(
             Icons.close_rounded,
-            '$mistakes',
+            '$mistakes/$mistakeLimit',
             mistakes > 0 ? const Color(0xFFFB7185) : palette.textMuted,
           ),
           item(
@@ -245,14 +255,18 @@ class _Cell extends StatelessWidget {
       width: heavy ? 1.4 : 0.6,
     );
 
-    final background = selected
-        ? accent.withValues(alpha: 0.35)
-        : wrong
+    // Highlights are deliberately NEUTRAL greys. They used to be tinted with
+    // the mode accent — the same colour as the player's own entries — so a
+    // green digit sitting on a green highlight was barely legible. Reserving
+    // the accent for digits keeps every number readable on every background.
+    final background = wrong
         ? const Color(0x33FB7185)
+        : selected
+        ? palette.textMuted.withValues(alpha: 0.34)
         : twin
-        ? accent.withValues(alpha: 0.18)
+        ? palette.textMuted.withValues(alpha: 0.18)
         : peer
-        ? palette.surfaceBorder.withValues(alpha: 0.35)
+        ? palette.textMuted.withValues(alpha: 0.09)
         : Colors.transparent;
 
     return GestureDetector(
@@ -273,6 +287,11 @@ class _Cell extends StatelessWidget {
             ),
           ),
           alignment: Alignment.center,
+          // A ring, not a fill: marks the selection without washing out the
+          // digit inside it.
+          foregroundDecoration: selected
+              ? BoxDecoration(border: Border.all(color: accent, width: 2.2))
+              : null,
           child: value == 0
               ? null
               : Text(
